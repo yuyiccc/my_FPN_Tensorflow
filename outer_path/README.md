@@ -1,0 +1,1 @@
+### this path is place source data, tfrecord, pretrained_weights and ouput(training summary and trained_weight)
