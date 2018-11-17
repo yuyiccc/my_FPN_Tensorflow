@@ -17,8 +17,6 @@ parser.add_argument('--im_type', default='.jpg', type=str, help="image's type")
 args = parser.parse_args()
 
 
-
-
 # source dataset path
 SOURCE_DATA_PATH = os.path.join(cfg.ROOT_PATH, 'outer_path', 'source_data_set')
 # source images path
@@ -30,7 +28,7 @@ if not os.path.isdir(SOURCE_IM_PATH) and not os.path.isdir(SOURCE_XML_PATH):
     raise NameError('source data path is not right!!!')
 
 
-def create_dataset_path(dataset_name = 'train'):
+def create_dataset_path(dataset_name='train'):
     dataset_path = os.path.join(SOURCE_DATA_PATH, '%s_dataset'%dataset_name)
     dataset_image_path = os.path.join(dataset_path, 'image_files')
     dataset_xml_path = os.path.join(dataset_path, 'xml_files')
