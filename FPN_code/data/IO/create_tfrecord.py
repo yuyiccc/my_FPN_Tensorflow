@@ -12,18 +12,20 @@ import cv2
 import  xml.etree.cElementTree as ET
 from libs.label_name_dict import LABEL_TO_NUMBER
 import numpy as np
-
+from tools.assist_tools import check_and_create_paths
 parser = argparse.ArgumentParser()
 parser.add_argument('--im_type', default='.jpg', type=str, help='image type')
 parser.add_argument('--dataset_name', default='train_dataset', type=str, help='dataset name')
 parser.add_argument('--records_name', default='train.tfrecord', type=str, help='tfrecord name')
 args = parser.parse_args()
 # dataset path
-DATA_PATH = os.path.join(cfg.OUTER_PATH, 'source_data_set', args.dataset_name)
+DATA_PATH = os.path.join(cfg.OUTER_PATH, 'source_data_set', cfg.DATASET_NAME, args.dataset_name)
 IM_PATH = os.path.join(DATA_PATH, 'image_files')
 XML_PATH = os.path.join(DATA_PATH, 'xml_files')
 # tfrecord path
-TFRECORD_PATH = os.path.join(cfg.OUTER_PATH, 'tfrecords', args.records_name)
+TFRECORD_PATH = os.path.join(cfg.OUTER_PATH, 'tfrecords', cfg.DATASET_NAME)
+check_and_create_paths([TFRECORD_PATH])
+TFRECORD_PATH = os.path.join(TFRECORD_PATH, args.records_name)
 
 
 def _int64_feature(value):
@@ -66,8 +68,11 @@ def check_image_and_boxes(im_shape,xml_shape,boxes):
         %(im_shape[0], im_shape[1], xml_shape[0], xml_shape[1])
 
     # check boxes
-    assert (boxes > 0).all() and (boxes[:, ::2] <= im_shape[0]).all() and (boxes[:, 1::2] <= im_shape[1]).all(), \
-        "boxes not in images. "
+    assert (boxes > 0).all(), "gt_boxes coord less 0"
+    assert (boxes[:, ::2] <= im_shape[0]).all(), "gt_boxes' y greater than height"
+    assert (boxes[:, 1::2] <= im_shape[1]).all(), "gt_boxes' x greater than weight"
+    assert (boxes[:, 0] < boxes[:, 2]), "xmin > xmax "
+    assert (boxes[:, 1] < boxes[:, 3]), "ymin > ymax "
 
 
 def convert_data_to_tfrecord():
@@ -86,8 +91,8 @@ def convert_data_to_tfrecord():
         img = cv2.imread(image_i_path)
 
         # check image and boxes
-        im_shape = np.array([img_height, img_width])
-        xml_shape = np.array(img.shape[:2])
+        xml_shape = np.array([img_height, img_width])
+        im_shape = np.array(img.shape[:2])
         check_image_and_boxes(im_shape=im_shape, xml_shape=xml_shape, boxes=gtbox_label[:, :4])
 
         features = tf.train.Features(feature={

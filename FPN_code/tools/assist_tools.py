@@ -37,7 +37,6 @@ def check_files(args):
             raise NameError('This file:%s does not exists!!! '%file)
 
 
-
 class ShowProcess():
     """
     显示处理进度的类

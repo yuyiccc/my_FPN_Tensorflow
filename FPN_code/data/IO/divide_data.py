@@ -18,7 +18,7 @@ args = parser.parse_args()
 
 
 # source dataset path
-SOURCE_DATA_PATH = os.path.join(cfg.ROOT_PATH, 'outer_path', 'source_data_set')
+SOURCE_DATA_PATH = os.path.join(cfg.ROOT_PATH, 'outer_path', 'source_data_set', cfg.DATASET_NAME)
 # source images path
 SOURCE_IM_PATH = os.path.join(SOURCE_DATA_PATH, 'IMAGES')
 # source xml path
