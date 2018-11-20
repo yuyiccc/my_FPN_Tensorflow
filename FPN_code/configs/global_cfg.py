@@ -13,7 +13,12 @@ ROOT_PATH = os.path.abspath("F:\\tensorflow\\detections\\my_FPN_Tensorflow")
 OUTER_PATH = os.path.join(ROOT_PATH, 'outer_path')
 # data set name
 DATASET_NAME = 'pascal'
-
+# network name
+NETWORK_NAME = 'res101'
+# version
+VERSION = 'v1'
+# summary path
+SUMMARY_PATH = os.path.join(OUTER_PATH, 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
 
 ##########################
 # data process parameter #
