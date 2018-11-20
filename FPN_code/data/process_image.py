@@ -20,7 +20,7 @@ def short_side_resize(img_tensor, gtbox_tensor, shortside_len):
     img_tensor = tf.expand_dims(img_tensor, axis=0)
     img_tensor = tf.image.resize_bilinear(img_tensor, size=(new_h, new_w))
 
-    xmin, ymin, xmax, ymax, label = tf.unstack(gtbox_tensor,axis=1)
+    ymin, xmin, ymax, xmax, label = tf.unstack(gtbox_tensor, axis=1)
 
     xmin, xmax = xmin*new_w//w, xmax*new_w//w
     ymin, ymax = ymin*new_h//h, ymax*new_h//h
@@ -34,13 +34,13 @@ def flip_left_right(img_tensor, gtbox_tensor):
 
     img_tensor = tf.image.flip_left_right(img_tensor)
 
-    ymin, xmin, ymax, xmax, label = tf.unstack(gtbox_tensor,axis=1)
+    ymin, xmin, ymax, xmax, label = tf.unstack(gtbox_tensor, axis=1)
     new_xmin, new_xmax = w-xmax, w-xmin
     return img_tensor, tf.transpose(tf.stack([ymin, new_xmin, ymax, new_xmax, label]))
 
 
 def random_flip_left_right(img_tensor, gtbox_tensor):
-    pred = tf.less(tf.constant(np.random.rand()), tf.constant(0.5))
+    pred = tf.less(tf.random_uniform(shape=[], minval=0, maxval=1), 0.5)
     img_tensor, gtbox_tensor = tf.cond(pred,
                                        lambda: flip_left_right(img_tensor, gtbox_tensor),
                                        lambda: (img_tensor, gtbox_tensor)

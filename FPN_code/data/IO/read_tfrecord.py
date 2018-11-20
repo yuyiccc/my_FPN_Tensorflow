@@ -72,5 +72,10 @@ if __name__=='__main__':
     iterator, img_name, img, gtboxes_label, num_gtbox = data.get_batch_data()
     with tf.Session() as sess:
         sess.run(iterator.initializer)
-        img_name_i, img_i, gtboxes_label_i, num_gtbox_i = sess.run((img_name, img, gtboxes_label, num_gtbox))
-        print(gtboxes_label_i)
+        for i in range(10):
+            img_name_i, img_i, gtboxes_label_i, num_gtbox_i = sess.run((img_name, img, gtboxes_label, num_gtbox))
+            print(img_name_i[0].decode(), i)
+            print(img_i.shape)
+            print(gtboxes_label_i, num_gtbox_i)
+            print(img_i[:4, :4, 0], '\n\n')
+
