@@ -18,7 +18,7 @@ NETWORK_NAME = 'res101'
 # version
 VERSION = 'v1'
 # summary path
-SUMMARY_PATH = os.path.join(OUTER_PATH, 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
+SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
 
 ##########################
 # data process parameter #
