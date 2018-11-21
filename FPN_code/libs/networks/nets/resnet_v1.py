@@ -53,8 +53,10 @@ ResNet-101 for semantic segmentation into 21 classes:
                                                 output_stride=16)
 """
 import tensorflow as tf
+import sys
+sys.path.append("../../../")
 
-import resnet_utils
+from libs.networks.nets import resnet_utils
 
 
 resnet_arg_scope = resnet_utils.resnet_arg_scope
