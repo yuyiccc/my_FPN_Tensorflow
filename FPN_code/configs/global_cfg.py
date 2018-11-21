@@ -3,6 +3,9 @@
 # Time :2018/11/15 15:35
 
 import os
+import sys
+sys.path.append('../')
+
 
 #####################
 # All kinds of path #
@@ -31,10 +34,15 @@ DEPTH_MEAN = [103.939, 116.779, 123.68]
 BATCH_SIZE = 1
 # epoch
 EPOCH = 20
+# num classes
+NUM_CLASSES = 21
 
-
-
+#####################
+# network parameter #
+#####################
+# weight decay
+WEIGHT_DECAY = 1e-4
 
 if __name__=='__main__':
     # test this cfg.py
-    print(1)
+    print(NUM_CLASSES)

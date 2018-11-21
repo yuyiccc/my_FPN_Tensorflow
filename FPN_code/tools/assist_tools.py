@@ -3,7 +3,7 @@
 # Time :2018/11/15 16:05
 
 import os
-import sys, time
+import sys
 
 # check path exists
 def check_path(path):

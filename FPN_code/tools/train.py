@@ -25,6 +25,21 @@ def train():
         with tf.name_scope('draw_gtboxes'):
             gtboxes_in_img = draw_box_with_tensor(img, tf.reshape(gtboxes_label, [-1, 5]), text=img_name)
 
+        ####################
+        # backbone network #
+        ####################
+
+        _, end_point = get_network_byname(net_name='res101',
+                                          inputs=img,
+                                          num_classes=None,
+                                          is_training=True,
+                                          global_pool=False,
+                                          output_stride=None,
+                                          spatial_squeeze=False)
+
+
+
+
         ###########
         # summary #
         ###########
