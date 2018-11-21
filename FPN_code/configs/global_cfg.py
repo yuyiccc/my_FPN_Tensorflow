@@ -17,11 +17,15 @@ OUTER_PATH = os.path.join(ROOT_PATH, 'outer_path')
 # data set name
 DATASET_NAME = 'pascal'
 # network name
-NETWORK_NAME = 'res101'
+NETWORK_NAME = 'resnet_v1_50'
 # version
 VERSION = 'v1'
 # summary path
 SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
+# backbone network pretrain path
+PRETRAIN_PATH = os.path.join(OUTER_PATH, 'pretrained_weight', NETWORK_NAME)
+
+
 
 ##########################
 # data process parameter #
@@ -42,6 +46,10 @@ NUM_CLASSES = 21
 #####################
 # weight decay
 WEIGHT_DECAY = 1e-4
+#
+
+
+
 
 if __name__=='__main__':
     # test this cfg.py

@@ -10,7 +10,7 @@ from libs.box_utils.show_boxes import draw_box_with_tensor
 import configs.global_cfg as cfg
 from  tools.assist_tools import ShowProcess, check_and_create_paths
 from libs.networks.network_factory import get_network_byname
-
+from  tools.restore_model import get_restorer
 
 debug = True
 
@@ -27,20 +27,21 @@ def train():
             iterator, img_name, img, gtboxes_label, num_gtbox = data.get_batch_data()
 
         with tf.name_scope('draw_gtboxes'):
-            gtboxes_in_img = draw_box_with_tensor(img, tf.reshape(gtboxes_label, [-1, 5]), text=img_name)
+            gtboxes_in_img = draw_box_with_tensor(img,
+                                                  tf.reshape(gtboxes_label, [-1, 5]),
+                                                  text=img_name)
 
         ####################
         # backbone network #
         ####################
 
-        _, end_point = get_network_byname(net_name='resnet_v1_101',
+        _, end_point = get_network_byname(net_name=cfg.NETWORK_NAME,
                                           inputs=img,
                                           num_classes=None,
                                           is_training=True,
                                           global_pool=False,
                                           output_stride=None,
                                           spatial_squeeze=False)
-
 
         ###########
         # summary #
@@ -50,7 +51,7 @@ def train():
         if debug:
             # bcckbone network
             for key in end_point.keys():
-                tf.summary.histogram(key,end_point[key])
+                tf.summary.histogram(key, end_point[key])
 
         summary_op = tf.summary.merge_all()
         summary_path = cfg.SUMMARY_PATH
@@ -65,11 +66,19 @@ def train():
             tf.global_variables_initializer()
         )
 
+
+        checkpoint_path, restorer = get_restorer()
+
         with tf.Session() as sess:
+            
+            # initial part
             sess.run(init_op)
             sess.run(iterator.initializer)
+            if checkpoint_path:
+                restorer.resore(sess,checkpoint_path)
+                print('restore is done!!!')
             summary_writer = tf.summary.FileWriter(summary_path, graph=sess.graph)
-            process = ShowProcess(10000)
+            process = ShowProcess(200)
             # end_point_i = sess.run(end_point)
             for i in range(200):
                 process.show_process()
