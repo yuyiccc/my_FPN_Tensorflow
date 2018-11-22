@@ -23,8 +23,7 @@ VERSION = 'v1'
 # summary path
 SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
 # backbone network pretrain path
-PRETRAIN_PATH = os.path.join(OUTER_PATH, 'pretrained_weight', NETWORK_NAME)
-
+PRETRAIN_PATH = os.path.join(OUTER_PATH, 'pretrained_weight', NETWORK_NAME, NETWORK_NAME + '.ckpt')
 
 
 ##########################

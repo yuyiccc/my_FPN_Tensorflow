@@ -11,6 +11,7 @@ import configs.global_cfg as cfg
 from  tools.assist_tools import ShowProcess, check_and_create_paths
 from libs.networks.network_factory import get_network_byname
 from  tools.restore_model import get_restorer
+import tensorflow.contrib.slim as slim
 
 debug = True
 
@@ -51,7 +52,10 @@ def train():
         if debug:
             # bcckbone network
             for key in end_point.keys():
-                tf.summary.histogram(key, end_point[key])
+                tf.summary.histogram('value/'+key, end_point[key])
+            # weights
+            for weight in slim.get_model_variables():
+                tf.summary.histogram('weight/'+weight.name, weight.value())
 
         summary_op = tf.summary.merge_all()
         summary_path = cfg.SUMMARY_PATH
@@ -66,16 +70,15 @@ def train():
             tf.global_variables_initializer()
         )
 
-
         checkpoint_path, restorer = get_restorer()
 
         with tf.Session() as sess:
-            
+
             # initial part
             sess.run(init_op)
             sess.run(iterator.initializer)
             if checkpoint_path:
-                restorer.resore(sess,checkpoint_path)
+                restorer.restore(sess, checkpoint_path)
                 print('restore is done!!!')
             summary_writer = tf.summary.FileWriter(summary_path, graph=sess.graph)
             process = ShowProcess(200)
@@ -94,5 +97,5 @@ def train():
                     # print(img_i[:4, :4, 0], '\n\n')
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     train()

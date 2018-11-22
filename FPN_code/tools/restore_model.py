@@ -8,10 +8,10 @@ sys.path.append('../')
 import configs.global_cfg as cfg
 import tensorflow as tf
 
+
 def get_restorer():
 
-    checkpoint_path = tf.train.latest_checkpoint(cfg.PRETRAIN_PATH)
-    print('pretrained backbone mode path is :%' % checkpoint_path)
+    print('pretrained backbone mode path is :%s' % cfg.PRETRAIN_PATH)
 
     model_variables = slim.get_model_variables()
 
@@ -22,7 +22,7 @@ def get_restorer():
         print(var.name)
     restorer = tf.train.Saver(restore_variables)
 
-    return checkpoint_path, restorer
+    return cfg.PRETRAIN_PATH, restorer
 
 
 
