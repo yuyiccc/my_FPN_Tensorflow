@@ -44,6 +44,10 @@ def train():
                                           output_stride=None,
                                           spatial_squeeze=False)
 
+        ###############
+        # rpn network #
+        ###############
+
         ###########
         # summary #
         ###########
