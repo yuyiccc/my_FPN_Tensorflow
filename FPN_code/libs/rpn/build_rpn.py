@@ -60,7 +60,7 @@ class RPN(object):
         self.is_training = is_training
         self.end_point = end_point
         self.anchor_scales = tf.constant(anchor_scales, dtype=tf.float32)
-        self.anchor_ratio = tf.constant(anchor_ratios, dtype=tf.float32)
+        self.anchor_ratios = tf.constant(anchor_ratios, dtype=tf.float32)
         self.scale_factors = scale_factors
         self.share_head = share_head
         self.num_anchor_per_location = len(anchor_scales)*len(anchor_ratios)
@@ -79,6 +79,7 @@ class RPN(object):
 
         self.feature_map_dict = self.get_feature_maps()
         self.feature_pyramid = self.build_feature_pyramid()
+        self.anchors, self.rpn_encode_boxes, self.rpn_scores = self.get_anchors_and_rpn_predict()
 
     def get_feature_maps(self):
         with tf.variable_scope('get_feature_maps'):
@@ -105,10 +106,71 @@ class RPN(object):
         feature_pyramid = {}
         with tf.variable_scope('build_feature_pyramid'):
             with slim.arg_scope([slim.conv2d], weights_regularizer=self.rpn_weight_decay):
-                feature_pyramid[]
-
-
-
-
-
+                feature_pyramid['P5'] = slim.conv2d(self.feature_map_dict['C5'],
+                                                    num_outputs=256,
+                                                    kernel_size=[1, 1],
+                                                    stride=1,
+                                                    scope='build_P5')
+                # P6 is downsample of P5
+                feature_pyramid['P6'] = slim.max_pool2d(feature_pyramid['P5'],
+                                                        kernel_size=[2, 2],
+                                                        stride=2,
+                                                        scope='build_P6')
+                for layer in range(4, 1, -1):
+                    p, c = feature_pyramid['P%s' % (layer+1)], self.feature_map_dict['C%' % layer]
+                    shape_c = tf.shape(c)
+                    upsample_p = tf.image.resize_nearest_neighbor(p,
+                                                                  [shape_c[1], shape_c[2]],
+                                                                  name='build_P%s/upsample_P' % layer)
+                    c = slim.conv2d(c, num_outputs=256,
+                                    kernel_size=[1, 1],
+                                    stride=1,
+                                    scope='build_P%s/reduce_C_dimension' % layer)
+                    p = upsample_p + c
+                    p = slim.conv2d(p, num_ouputs=256,
+                                    kernel_size=[3, 3],
+                                    stride=1,
+                                    padding='SAME',
+                                    scope='build_P%s/conv_after_plus' % layer)
+                    feature_pyramid['P%s' % layer] = p
         return feature_pyramid
+
+    def get_anchors_and_rpn_predict(self):
+        anchors = self.make_anchors()
+        rpn_encode_boxes, rpn_scores = self.rpn_net()
+
+        with tf.name_scope('get_anchors_and_rpn_predict'):
+            if self.remove_outside_anchors:
+                valid_indices = box_utils.filter_outside_boxes(boxes=anchors,
+                                                               img_h=tf.shape(self.img_batch)[1],
+                                                               img_w=tf.shape(self.img_batch)[2])
+                valid_anchors = tf.gather(anchors, valid_indices)
+                valid_rpn_encode_boxes = tf.gather(rpn_encode_boxes, valid_indices)
+                valid_rpn_scores = tf.gather(rpn_scores, valid_indices)
+
+                return valid_anchors, valid_rpn_encode_boxes, valid_rpn_scores
+            else:
+                return anchors, rpn_encode_boxes, rpn_scores
+
+    def make_anchors(self):
+        with tf.variable_scope('make_anchors'):
+            anchor_list = []
+
+            with tf.name_scope('make_anchors_all_level'):
+                for level, base_anchor_size, stride in zip(self.level, self.base_anchor_size_list, self.stride):
+
+                    feature_map_shape = tf.shape(self.feature_pyramid[level])
+                    feature_h, feature_w = feature_map_shape[0], feature_map_shape[1]
+
+                    temp_anchors = make_anchor.make_anchors(base_anchor_size, self.anchor_scales,
+                                                            self.anchor_ratios,
+                                                            feature_h,
+                                                            feature_w,
+                                                            stride,
+                                                            name='make_anchor_{}'.format(level))
+                    temp_anchors = tf.reshape(temp_anchors, [-1, 4])
+                    anchor_list.append(temp_anchors)
+
+                all_level_anchors = tf.concat(anchor_list, axis=0)
+                return all_level_anchors
+
