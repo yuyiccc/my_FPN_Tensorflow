@@ -4,7 +4,9 @@
 
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-
+import sys
+sys.path.append('../../')
+from libs.box_utils import show_boxes, make_anchor, boxes_utils
 
 
 class RPN(object):
@@ -141,9 +143,9 @@ class RPN(object):
 
         with tf.name_scope('get_anchors_and_rpn_predict'):
             if self.remove_outside_anchors:
-                valid_indices = box_utils.filter_outside_boxes(boxes=anchors,
-                                                               img_h=tf.shape(self.img_batch)[1],
-                                                               img_w=tf.shape(self.img_batch)[2])
+                valid_indices = boxes_utils.filter_outside_boxes(boxes=anchors,
+                                                                 img_h=tf.shape(self.img_batch)[1],
+                                                                 img_w=tf.shape(self.img_batch)[2])
                 valid_anchors = tf.gather(anchors, valid_indices)
                 valid_rpn_encode_boxes = tf.gather(rpn_encode_boxes, valid_indices)
                 valid_rpn_scores = tf.gather(rpn_scores, valid_indices)
@@ -153,6 +155,9 @@ class RPN(object):
                 return anchors, rpn_encode_boxes, rpn_scores
 
     def make_anchors(self):
+        '''
+        :return: [-1,4] ,all level's anchors
+        '''
         with tf.variable_scope('make_anchors'):
             anchor_list = []
 
@@ -173,4 +178,45 @@ class RPN(object):
 
                 all_level_anchors = tf.concat(anchor_list, axis=0)
                 return all_level_anchors
+
+    def rpn_net(self):
+        '''
+        :return: rpn_encode_boxes:[-1,4]  , boxes regression value
+        :return: rpn_scores: [-1,2], boxes fore-grand and back-grand scores
+        '''
+        rpn_encode_boxes_list = []
+        rpn_scores_list = []
+        with tf.variable_scope('rpn_net'):
+            with slim.arg_scope([slim.conv2d], weights_regularizer=slim.l2regularizer(self.rpn_weight_decay)):
+                for level in self.level:
+                    if self.share_head:
+                        reuse = None if level == 'P2' else True
+                        scope_list = ['conv2d_3x3', 'rpn_classifier', 'rpn_regressor']
+                    else:
+                        reuse = None
+                        scope_list = ['conv2d_3x3_'+level, 'rpn_classifier_'+level, 'rpn_regressor_'+level]
+                    rpn_conv2d_3x3 = slim.conv2d(self.feature_pyramid[level],
+                                                 num_ouputs=512,
+                                                 kernel_size=[3, 3],
+                                                 stride=1,
+                                                 scope=scope_list[0],
+                                                 reuse=reuse
+                                                 )
+                    rpn_scores = slim.conv2d(rpn_conv2d_3x3,
+                                             num_outputs=self.num_anchor_per_location*2,
+                                             kernel_size=[1, 1],
+                                             stride=1,
+                                             scope=scope_list[1],
+                                             reuse=reuse)
+                    rpn_encode_boxes = slim.conv2d(rpn_conv2s_3x3,
+                                                   num_outputs=self.num_anchor_per_location*4,
+                                                   kernel_size=[1, 1],
+                                                   stride=1,
+                                                   scope=scope_list[2],
+                                                   reuse=reuse)
+                    rpn_scores_list.append(tf.reshape(rpn_scores, shape=[-1, 2]))
+                    rpn_encode_boxes_list.append(tf.reshape(rpn_encode_boxes, shape=[-1, 4]))
+                all_rpn_scores = tf.concat(rpn_scores_list, axis=0)
+                all_rpn_encode_boxes = tf.concat(rpn_encode_boxes_list, axis=0)
+                return all_rpn_encode_boxes, all_rpn_scores
 
