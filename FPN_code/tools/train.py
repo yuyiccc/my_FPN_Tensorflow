@@ -10,6 +10,7 @@ from libs.box_utils.show_boxes import draw_box_with_tensor
 import configs.global_cfg as cfg
 from  tools.assist_tools import ShowProcess, check_and_create_paths
 from libs.networks.network_factory import get_network_byname
+from libs.rpn import build_rpn
 from  tools.restore_model import get_restorer
 import tensorflow.contrib.slim as slim
 
@@ -47,6 +48,32 @@ def train():
         ###############
         # rpn network #
         ###############
+        rpn_net = build_rpn.RPN(net_name=cfg.NETWORK_NAME,
+                                inputs=img,
+                                gtboxes_and_label=gtboxes_label,
+                                is_training=True,
+                                end_point=end_point,
+                                anchor_scales=cfg.ANCHOR_SCALES,
+                                anchor_ratios=cfg.ANCHOR_RATIOS,
+                                scale_factors=cfg.SCALE_FACTOR,
+                                base_anchor_size_list=cfg.BASE_ANCHOR_SIZE_LIST,
+                                stride=cfg.STRIDE,
+                                level=cfg.LEVEL,
+                                top_k_nms=cfg.TOP_K_NMS,
+                                share_head=cfg.IS_SHARE_HEAD,
+                                max_proposal_num=cfg.MAX_PROPOSAL_NUM,
+                                rpn_iou_positive_threshold=cfg.RPN_IOU_POSITIVE_THRESHOLD,
+                                rpn_iou_negtive_threshold=cfg.RPN_IOU_NEGATIVE_THRESHOLD,
+                                rpn_mini_batchsize=cfg.RPN_MINI_BATCH_SIZE,
+                                rpn_positive_ratio=cfg.POSITIVE_RATIO,
+                                remove_outside_anchors=cfg.IS_FILTER_OUTSIDE_ANCHORS,
+                                rpn_weight_decay=cfg.WEIGHT_DECAY
+                                )
+
+
+
+
+
 
         ###########
         # summary #

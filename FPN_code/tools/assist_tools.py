@@ -5,13 +5,16 @@
 import os
 import sys
 
+
 # check path exists
 def check_path(path):
     return True if os.path.isdir(path) else False
 
+
 # check file exists
 def check_file(file):
     return True if os.path.isfile(file) else False
+
 
 # check the args'(paths or files) exists
 def check_paths_or_files(args):
@@ -22,6 +25,7 @@ def check_paths_or_files(args):
             num_exists += 1
     print('there have %d items do not exists'%num_exists)
     return True if num_exists == 0 else False
+
 
 # check paths. if it do not exists then create it.
 def check_and_create_paths(args):
@@ -60,12 +64,12 @@ class ShowProcess():
             self.i = i
         else:
             self.i += 1
-        num_arrow = int(self.i * self.max_arrow / self.max_steps) #计算显示多少个'>'
-        num_line = self.max_arrow - num_arrow #计算显示多少个'-'
-        percent = self.i * 100.0 / self.max_steps #计算完成进度，格式为xx.xx%
+        num_arrow = int(self.i * self.max_arrow / self.max_steps) # 计算显示多少个'>'
+        num_line = self.max_arrow - num_arrow # 计算显示多少个'-'
+        percent = self.i * 100.0 / self.max_steps # 计算完成进度，格式为xx.xx%
         process_bar = '[' + '>' * num_arrow + '-' * num_line + ']'\
-                      + '%.2f' % percent + '%' + '\r' #带输出的字符串，'\r'表示不换行回到最左边
-        sys.stdout.write(process_bar) #这两句打印字符到终端
+                      + '%.2f' % percent + '%' + '\r' # 带输出的字符串，'\r'表示不换行回到最左边
+        sys.stdout.write(process_bar) # 这两句打印字符到终端
         sys.stdout.flush()
         if self.i >= self.max_steps:
             self.close()

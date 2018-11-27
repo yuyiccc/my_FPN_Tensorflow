@@ -3,7 +3,7 @@
 # Time :2018/11/27 11:03
 
 import tensorflow as tf
-import numpy as np
+
 
 def filter_outside_box(anchors, img_h, img_w):
     '''
@@ -26,7 +26,8 @@ def filter_outside_box(anchors, img_h, img_w):
 
     return valid_indices
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     anchors_min = tf.random_normal(shape=[6, 2], mean=1)
     anchors_max = anchors_min+1
     anchors = tf.concat([anchors_min, anchors_max], axis=1)

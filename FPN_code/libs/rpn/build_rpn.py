@@ -12,7 +12,7 @@ from libs.box_utils import show_boxes, make_anchor, boxes_utils
 class RPN(object):
     def __init__(self,
                  net_name,
-                 input,
+                 inputs,
                  gtboxes_and_label,
                  is_training,
                  end_point,
@@ -35,7 +35,7 @@ class RPN(object):
                  ):
         '''
         :param net_name: string type, backbone network name , 'resnet_v1_50'
-        :param input:  tensor type, image batch [1,,h,w,3]
+        :param inputs:  tensor type, image batch [1,,h,w,3]
         :param gtboxes_and_label: tensor type, [-1,5],[ymin, xmin, ymax, xmax, label]
         :param is_training:  bool type, training or test
         :param end_point:   dict type, backbone network's feature maps
@@ -57,7 +57,7 @@ class RPN(object):
         :param rpn_weight_decay: rpn network's weight decay
         '''
         self.net_name = net_name
-        self.img_batch = input
+        self.img_batch = inputs
         self.gtboxes_and_label = gtboxes_and_label
         self.is_training = is_training
         self.end_point = end_point
@@ -86,14 +86,14 @@ class RPN(object):
     def get_feature_maps(self):
         with tf.variable_scope('get_feature_maps'):
             if self.net_name == 'resnet_v1_50':
-                feature_maps_dict={
+                feature_maps_dict = {
                     'C2': self.end_point['resnet_v1_50/block1/unit_2/bottleneck_v1'],  # stride=4
                     'C3': self.end_point['resnet_v1_50/block2/unit_3/bottleneck_v1'],  # stride=8
                     'C4': self.end_point['resnet_v1_50/block3/unit_5/bottleneck_v1'],  # stride=16
                     'C5': self.end_point['resnet_v1_50/block4']  # stride=32
                 }
             elif self.net_name == 'resnet_v1_101':
-                feature_maps_dict={
+                feature_maps_dict = {
                     'C2': self.end_point['resnet_v1_101/block1/unit_2/bottleneck_v1'],  # stride=4
                     'C3': self.end_point['resnet_v1_101/block2/unit_3/bottleneck_v1'],  # stride=8
                     'C4': self.end_point['resnet_v1_101/block3/unit_22/bottleneck_v1'],  # stride=16
@@ -207,12 +207,14 @@ class RPN(object):
                                              kernel_size=[1, 1],
                                              stride=1,
                                              scope=scope_list[1],
+                                             activation_fn=None,
                                              reuse=reuse)
-                    rpn_encode_boxes = slim.conv2d(rpn_conv2s_3x3,
+                    rpn_encode_boxes = slim.conv2d(rpn_conv2d_3x3,
                                                    num_outputs=self.num_anchor_per_location*4,
                                                    kernel_size=[1, 1],
                                                    stride=1,
                                                    scope=scope_list[2],
+                                                   activation_fn=None,
                                                    reuse=reuse)
                     rpn_scores_list.append(tf.reshape(rpn_scores, shape=[-1, 2]))
                     rpn_encode_boxes_list.append(tf.reshape(rpn_encode_boxes, shape=[-1, 4]))
