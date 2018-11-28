@@ -10,7 +10,7 @@ from libs.box_utils.show_boxes import draw_box_with_tensor
 import configs.global_cfg as cfg
 from  tools.assist_tools import ShowProcess, check_and_create_paths
 from libs.networks.network_factory import get_network_byname
-from libs.rpn import build_rpn
+from libs.rpn import build_rpn, debug_rpn
 from  tools.restore_model import get_restorer
 import tensorflow.contrib.slim as slim
 
@@ -87,6 +87,10 @@ def train():
             # weights
             for weight in slim.get_model_variables():
                 tf.summary.histogram('weight/'+weight.name, weight.value())
+            # rpn anchor
+            image_with_anchor_list = debug_rpn.debug_rpn(rpn_net, img)
+            for i, image_with_anchor in enumerate(image_with_anchor_list):
+                tf.summary.image('anchors/image_with_anchors_'+str(i), image_with_anchor)
 
         summary_op = tf.summary.merge_all()
         summary_path = cfg.SUMMARY_PATH
@@ -112,9 +116,9 @@ def train():
                 restorer.restore(sess, checkpoint_path)
                 print('restore is done!!!')
             summary_writer = tf.summary.FileWriter(summary_path, graph=sess.graph)
-            process = ShowProcess(200)
+            process = ShowProcess(100)
             # end_point_i = sess.run(end_point)
-            for i in range(200):
+            for i in range(100):
                 process.show_process()
                 if i % 100 == 0:
                     summary_str = sess.run(summary_op)

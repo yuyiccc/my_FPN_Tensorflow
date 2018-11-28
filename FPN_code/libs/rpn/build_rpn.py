@@ -107,7 +107,7 @@ class RPN(object):
 
         feature_pyramid = {}
         with tf.variable_scope('build_feature_pyramid'):
-            with slim.arg_scope([slim.conv2d], weights_regularizer=self.rpn_weight_decay):
+            with slim.arg_scope([slim.conv2d], weights_regularizer=slim.l2_regularizer(self.rpn_weight_decay)):
                 feature_pyramid['P5'] = slim.conv2d(self.feature_map_dict['C5'],
                                                     num_outputs=256,
                                                     kernel_size=[1, 1],
@@ -119,7 +119,7 @@ class RPN(object):
                                                         stride=2,
                                                         scope='build_P6')
                 for layer in range(4, 1, -1):
-                    p, c = feature_pyramid['P%s' % (layer+1)], self.feature_map_dict['C%' % layer]
+                    p, c = feature_pyramid['P%s' % (layer+1)], self.feature_map_dict['C%s' % layer]
                     shape_c = tf.shape(c)
                     upsample_p = tf.image.resize_nearest_neighbor(p,
                                                                   [shape_c[1], shape_c[2]],
@@ -129,7 +129,7 @@ class RPN(object):
                                     stride=1,
                                     scope='build_P%s/reduce_C_dimension' % layer)
                     p = upsample_p + c
-                    p = slim.conv2d(p, num_ouputs=256,
+                    p = slim.conv2d(p, num_outputs=256,
                                     kernel_size=[3, 3],
                                     stride=1,
                                     padding='SAME',
@@ -187,7 +187,7 @@ class RPN(object):
         rpn_encode_boxes_list = []
         rpn_scores_list = []
         with tf.variable_scope('rpn_net'):
-            with slim.arg_scope([slim.conv2d], weights_regularizer=slim.l2regularizer(self.rpn_weight_decay)):
+            with slim.arg_scope([slim.conv2d], weights_regularizer=slim.l2_regularizer(self.rpn_weight_decay)):
                 for level in self.level:
                     if self.share_head:
                         reuse = None if level == 'P2' else True
@@ -195,8 +195,7 @@ class RPN(object):
                     else:
                         reuse = None
                         scope_list = ['conv2d_3x3_'+level, 'rpn_classifier_'+level, 'rpn_regressor_'+level]
-                    rpn_conv2d_3x3 = slim.conv2d(self.feature_pyramid[level],
-                                                 num_ouputs=512,
+                    rpn_conv2d_3x3 = slim.conv2d(self.feature_pyramid[level], num_outputs=512,
                                                  kernel_size=[3, 3],
                                                  stride=1,
                                                  scope=scope_list[0],
