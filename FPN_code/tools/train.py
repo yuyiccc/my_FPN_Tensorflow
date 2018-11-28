@@ -90,7 +90,7 @@ def train():
             # rpn anchor
             image_with_anchor_list = debug_rpn.debug_rpn(rpn_net, img)
             for i, image_with_anchor in enumerate(image_with_anchor_list):
-                tf.summary.image('anchors/image_with_anchors_'+str(i), image_with_anchor)
+                tf.summary.image('anchors/image_with_anchors_'+str(i), image_with_anchor[0])
 
         summary_op = tf.summary.merge_all()
         summary_path = cfg.SUMMARY_PATH
@@ -121,6 +121,7 @@ def train():
             for i in range(100):
                 process.show_process()
                 if i % 100 == 0:
+                    anchors_a = sess.run(rpn_net.anchors)
                     summary_str = sess.run(summary_op)
                     summary_writer.add_summary(summary_str, i)
                     summary_writer.flush()

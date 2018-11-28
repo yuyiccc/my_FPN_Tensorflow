@@ -49,9 +49,9 @@ WEIGHT_DECAY = 1e-4
 
 # -------rpn network---------------#
 # anchor scales
-ANCHOR_SCALES = [0.5, 1, 2]
+ANCHOR_SCALES = [1]
 # anchor ratios
-ANCHOR_RATIOS = [0.5, 1, 2]
+ANCHOR_RATIOS = [1]
 # scale_factor
 SCALE_FACTOR = [1]
 # base_anchor_size_list

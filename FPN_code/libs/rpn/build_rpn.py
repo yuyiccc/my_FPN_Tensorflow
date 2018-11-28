@@ -165,7 +165,7 @@ class RPN(object):
                 for level, base_anchor_size, stride in zip(self.level, self.base_anchor_size_list, self.stride):
 
                     feature_map_shape = tf.shape(self.feature_pyramid[level])
-                    feature_h, feature_w = feature_map_shape[0], feature_map_shape[1]
+                    feature_h, feature_w = feature_map_shape[1], feature_map_shape[2]
 
                     temp_anchors = make_anchor.make_anchors(base_anchor_size, self.anchor_scales,
                                                             self.anchor_ratios,

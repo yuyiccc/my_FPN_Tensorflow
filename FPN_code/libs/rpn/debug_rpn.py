@@ -17,14 +17,18 @@ def debug_rpn(rpn, image):
     2. histogram of rpn boxes
     3. histogram of rpn scores
     '''
-    num_type_anchor = 9#tf.shape(rpn.anchor_scales)[0]*tf.shape(rpn.anchor_ratios)[0]
-    num_anchor = tf.shape(rpn.anchors)[0]
-    num_anchor_in_one_type = num_anchor//num_type_anchor
+    num_level_anchor = len(rpn.level)
 
     image_with_anchor_list = []
 
-    for i in range(num_type_anchor):
-        index_start, index_end = i*num_anchor_in_one_type, (i+1)*num_anchor_in_one_type
+    index_start = 0
+    for i in range(num_level_anchor):
+        feature_shape = tf.shape(rpn.feature_pyramid['P%d' % (i+2)])
+        num_anchor_i = feature_shape[1]*feature_shape[2]
+        if i == 0:
+            index_end = num_anchor_i
+        else:
+            index_start, index_end = index_end, index_end+num_anchor_i
         image_with_anchor = draw_anchor_in_image(image, rpn.anchors[index_start:index_end])
         image_with_anchor_list.append(image_with_anchor)
     tf.summary.histogram('anchors/boxes_regression', rpn.rpn_encode_boxes)
