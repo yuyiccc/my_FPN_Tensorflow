@@ -20,17 +20,22 @@ def debug_rpn(rpn, image):
     num_level_anchor = len(rpn.level)
 
     image_with_anchor_list = []
+    anchors_list = []
+    num_anchor_list = []
 
     index_start = 0
     for i in range(num_level_anchor):
         feature_shape = tf.shape(rpn.feature_pyramid['P%d' % (i+2)])
-        num_anchor_i = feature_shape[1]*feature_shape[2]
+        num_anchor_i = feature_shape[1]*feature_shape[2]*rpn.num_anchor_per_location
+        num_anchor_list.append(num_anchor_i)
         if i == 0:
             index_end = num_anchor_i
         else:
             index_start, index_end = index_end, index_end+num_anchor_i
         image_with_anchor = draw_anchor_in_image(image, rpn.anchors[index_start:index_end])
+        anchors_list.append(rpn.anchors[index_start:index_end])
+
         image_with_anchor_list.append(image_with_anchor)
     tf.summary.histogram('anchors/boxes_regression', rpn.rpn_encode_boxes)
     tf.summary.histogram('anchors/boxes_scores', rpn.rpn_scores)
-    return image_with_anchor_list
+    return image_with_anchor_list, anchors_list, num_anchor_list

@@ -6,6 +6,7 @@ import tensorflow as tf
 import numpy as np
 import cv2
 
+
 def make_anchors(base_anchor_size,
                  anchor_scales,
                  anchor_ratios,
@@ -45,7 +46,6 @@ def make_anchors(base_anchor_size,
 
         final_anchors = tf.concat([box_center-0.5*box_size, box_center+0.5*box_size], axis=1)
         return final_anchors
-
 
 
 def enum_ratios(base_anchor, anchor_ratios, name='enum_ratios'):
@@ -98,7 +98,8 @@ def draw_anchor_boxes(anchors, img_h, img_w):
     cv2.imshow('show_anchors', img_backgrand)
     cv2.waitKey(0)
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     base_anchor_size = 128
     stride = 128
     feature_h = 5

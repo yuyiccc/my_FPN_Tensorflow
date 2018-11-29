@@ -16,8 +16,8 @@ def filter_outside_boxes(anchors, img_h, img_w):
         y_min, x_min, y_max, x_max = tf.unstack(anchors, axis=1)
         y_min_index = tf.greater_equal(y_min, 0)
         x_min_index = tf.greater_equal(x_min, 0)
-        y_max_index = tf.less(y_max, img_h)
-        x_max_index = tf.less(x_max, img_w)
+        y_max_index = tf.less(y_max, tf.cast(img_h, dtype=tf.float32))
+        x_max_index = tf.less(x_max, tf.cast(img_w, dtype=tf.float32))
 
         indices = tf.transpose(tf.stack([y_min_index, x_min_index, y_max_index, x_max_index]))
         indices = tf.cast(indices, tf.float32)

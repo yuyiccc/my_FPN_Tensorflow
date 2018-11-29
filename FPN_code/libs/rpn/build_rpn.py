@@ -6,7 +6,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import sys
 sys.path.append('../../')
-from libs.box_utils import show_boxes, make_anchor, boxes_utils
+from libs.box_utils import make_anchor, boxes_utils
 
 
 class RPN(object):
@@ -143,7 +143,7 @@ class RPN(object):
 
         with tf.name_scope('get_anchors_and_rpn_predict'):
             if self.remove_outside_anchors:
-                valid_indices = boxes_utils.filter_outside_boxes(boxes=anchors,
+                valid_indices = boxes_utils.filter_outside_boxes(anchors=anchors,
                                                                  img_h=tf.shape(self.img_batch)[1],
                                                                  img_w=tf.shape(self.img_batch)[2])
                 valid_anchors = tf.gather(anchors, valid_indices)
@@ -221,3 +221,9 @@ class RPN(object):
                 all_rpn_encode_boxes = tf.concat(rpn_encode_boxes_list, axis=0)
                 return all_rpn_encode_boxes, all_rpn_scores
 
+    def rpn_proposals(self):
+
+
+
+
+        return rpn_proposals_boxes, rpn_proposals_scores
