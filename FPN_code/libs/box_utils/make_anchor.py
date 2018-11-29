@@ -100,7 +100,7 @@ def draw_anchor_boxes(anchors, img_h, img_w):
 
 
 if __name__ == '__main__':
-    base_anchor_size = 128
+    base_anchor_size = 2
     stride = 128
     feature_h = 5
     feature_w = 5

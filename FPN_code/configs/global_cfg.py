@@ -30,7 +30,7 @@ PRETRAIN_PATH = os.path.join(OUTER_PATH, 'pretrained_weight', NETWORK_NAME, NETW
 # data process parameter #
 ##########################
 # shortside lenght
-SHORTSIDE_LEN = 600
+SHORTSIDE_LEN = 800
 # image depth mean value
 DEPTH_MEAN = [103.939, 116.779, 123.68]
 # batch_size
@@ -49,17 +49,17 @@ WEIGHT_DECAY = 1e-4
 
 # -------rpn network---------------#
 # anchor scales
-ANCHOR_SCALES = [0.5, 1]
+ANCHOR_SCALES = [1]
 # anchor ratios
-ANCHOR_RATIOS = [1]
+ANCHOR_RATIOS = [1, 2, 0.5]
 # scale_factor
 SCALE_FACTOR = [1]
 # base_anchor_size_list
-BASE_ANCHOR_SIZE_LIST = [64, 64] #[16, 32, 64, 128, 256]
+BASE_ANCHOR_SIZE_LIST = [32, 64, 128, 256, 512]
 # stride
-STRIDE = [32, 64] #[4, 8, 16, 32, 64]
+STRIDE = [4, 8, 16, 32, 64]
 # level
-LEVEL = ['P5', 'P6']# ['P2', 'P3', 'P4', 'P5', 'P6']
+LEVEL = ['P2', 'P3', 'P4', 'P5', 'P6']
 # top k nms
 TOP_K_NMS = 12000
 # max number of proposal
@@ -69,15 +69,15 @@ RPN_MINI_BATCH_SIZE = 512
 # ratio of positive sample in mini batch
 POSITIVE_RATIO = 0.5
 # whether filter of outside anchors
-IS_FILTER_OUTSIDE_ANCHORS = True
+IS_FILTER_OUTSIDE_ANCHORS = False
 # iou threshold of positive sample of rpn net
-RPN_IOU_POSITIVE_THRESHOLD = 0.5
+RPN_IOU_POSITIVE_THRESHOLD = 0.7
 # iou threshold of negative sample of rpn net
-RPN_IOU_NEGATIVE_THRESHOLD = 0.2
+RPN_IOU_NEGATIVE_THRESHOLD = 0.3
 # rpn net weight decay
 RPN_WEIGHT_DECAY = 1e-4
 # whether share head
-IS_SHARE_HEAD = False
+IS_SHARE_HEAD = True
 #
 
 

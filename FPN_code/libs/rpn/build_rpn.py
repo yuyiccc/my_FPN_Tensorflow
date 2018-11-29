@@ -221,9 +221,9 @@ class RPN(object):
                 all_rpn_encode_boxes = tf.concat(rpn_encode_boxes_list, axis=0)
                 return all_rpn_encode_boxes, all_rpn_scores
 
-    def rpn_proposals(self):
-
-
-
-
-        return rpn_proposals_boxes, rpn_proposals_scores
+    # def rpn_proposals(self):
+    #
+    #
+    #
+    #
+    #     return rpn_proposals_boxes, rpn_proposals_scores
