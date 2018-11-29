@@ -9,11 +9,8 @@ sys.path.append("../../")
 import configs.global_cfg as cfg
 
 
-
-
 def draw_box_with_tensor(img_batch, boxes, text):
     '''
-
     :param img_batch: [1,h,w,3]
     :param boxes: [-1,5]
     :param text: image name

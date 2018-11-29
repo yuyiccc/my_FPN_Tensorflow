@@ -5,7 +5,7 @@
 import tensorflow as tf
 
 
-def filter_outside_box(anchors, img_h, img_w):
+def filter_outside_boxes(anchors, img_h, img_w):
     '''
     :param anchors: list [-1,4], all levels' anchors
     :param img_h:  int type, image's height
