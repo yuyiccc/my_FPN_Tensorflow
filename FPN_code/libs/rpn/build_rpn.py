@@ -236,7 +236,8 @@ class RPN(object):
                                                               scale_factors=self.scale_factors)
             if not self.is_training:
                 image_shape = tf.shape(self.img_batch)
-                rpn_decode_boxes =
+                rpn_decode_boxes = boxes_utils.clip_boxes_to_img_boundaries(rpn_decode_boxes, image_shape)
+                
 
 
         return rpn_proposals_boxes, rpn_proposals_scores

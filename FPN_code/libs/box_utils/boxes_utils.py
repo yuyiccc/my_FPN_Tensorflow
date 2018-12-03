@@ -27,16 +27,38 @@ def filter_outside_boxes(anchors, img_h, img_w):
     return valid_indices
 
 
+def clip_boxes_to_img_boundaries(boxes, img_shape):
+    '''
+    :param boxes: [-1, 4]  ->[ymin, xmin, ymax, xmax]
+    :param img_shape: [1,4]->[1,h,w,3]
+    :return:
+    '''
+    def clip_one_side(one_side, max_boundaries):
+        return tf.maximum(tf.minimum(one_side, max_boundaries), 0.0)
+
+    image_h, image_w = tf.cast(img_shape[1], dtype=tf.float32), tf.cast(img_shape[2], dtype=tf.float32)
+
+    ymin, xmin, ymax, xmax = tf.unstack(boxes, axis=1)
+    ymin = clip_one_side(ymin, image_h)
+    xmin = clip_one_side(xmin, image_w)
+    ymax = clip_one_side(ymax, image_h)
+    xmax = clip_one_side(xmax, image_w)
+
+    return tf.transpose(tf.stack([ymin, xmin, ymax, xmax]))
+
+
 if __name__ == '__main__':
     anchors_min = tf.random_normal(shape=[6, 2], mean=1)
     anchors_max = anchors_min+1
     anchors = tf.concat([anchors_min, anchors_max], axis=1)
     img_h = 2
     img_w = 2
-    valid_indices = filter_outside_box(anchors, img_h, img_w)
+    valid_indices = filter_outside_boxes(anchors, img_h, img_w)
+    image_shape = tf.constant([1, img_h, img_w, 3], dtype=tf.int32)
+    clip_boxes = clip_boxes_to_img_boundaries(anchors, image_shape)
 
     with tf.Session() as sess:
-        a, b = sess.run([anchors, valid_indices])
+        a, b, c = sess.run([anchors, valid_indices, clip_boxes])
         print(a)
         print(b)
-
+        print(c)
