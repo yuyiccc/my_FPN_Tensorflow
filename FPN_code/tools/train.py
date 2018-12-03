@@ -69,13 +69,28 @@ def train():
                                 remove_outside_anchors=cfg.IS_FILTER_OUTSIDE_ANCHORS,
                                 rpn_weight_decay=cfg.WEIGHT_DECAY
                                 )
-        # rpn_proposals_boxes, rpn_proposals_scores = rpn_net.rpn_proposals()
+        rpn_proposals_boxes, rpn_proposals_scores = rpn_net.rpn_proposals()
+        with tf.name_scope('draw_proposals'):
+            rpn_object_indices = tf.reshape(tf.where(tf.greater(rpn_proposals_scores, 0.5)), shape=[-1])
+            rpn_object_boxes = tf.gather(rpn_proposals_boxes,
+                                         indices=rpn_object_indices)
+            rpn_object_boxes_in_img = draw_box_with_tensor(img_batch=img,
+                                                           boxes=rpn_object_boxes,
+                                                           text='rpn_object_boxes')
+            rpn_proposals_boxes_in_img = draw_box_with_tensor(img_batch=img,
+                                                              boxes=rpn_proposals_boxes,
+                                                              text='rpn_proposals_boxes')
 
 
         ###########
         # summary #
         ###########
+        # ground truth boxes
         tf.summary.image('images/gtboxes', gtboxes_in_img)
+
+        # rpn net's proposals
+        tf.summary.image('images/rpn/proposals', rpn_proposals_boxes_in_img)
+        tf.summary.image('images/rpn/objects', rpn_object_boxes_in_img)
 
         if debug:
             # bcckbone network

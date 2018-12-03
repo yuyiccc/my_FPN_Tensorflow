@@ -53,7 +53,7 @@ ANCHOR_SCALES = [1]
 # anchor ratios
 ANCHOR_RATIOS = [1, 2, 0.5]
 # scale_factor
-SCALE_FACTOR = [1]
+SCALE_FACTOR = [1, 1, 1, 1]
 # base_anchor_size_list
 BASE_ANCHOR_SIZE_LIST = [32, 64, 128, 256, 512]
 # stride

@@ -47,6 +47,16 @@ def clip_boxes_to_img_boundaries(boxes, img_shape):
     return tf.transpose(tf.stack([ymin, xmin, ymax, xmax]))
 
 
+def non_maximal_suppression(boxes, scores, iou_threshold, max_output_size, name='nms'):
+    with tf.variable_scope(name):
+        nms_indices = tf.image.non_max_suppression(boxes=boxes,
+                                                   scores=scores,
+                                                   max_output_size=max_output_size,
+                                                   iou_threshold=iou_threshold,
+                                                   name=name)
+        return nms_indices
+
+
 if __name__ == '__main__':
     anchors_min = tf.random_normal(shape=[6, 2], mean=1)
     anchors_max = anchors_min+1

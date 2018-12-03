@@ -29,8 +29,8 @@ def draw_box_with_tensor(img_batch, boxes, text):
                           pt2=(xmax, ymax),
                           color=color,
                           thickness=2)
-
-        text = text.decode()
+        if type(text) == bytes:
+            text = text.decode()
         cv2.putText(img,
                     text=text,
                     org=((img.shape[1]) // 2, (img.shape[0]) // 2),

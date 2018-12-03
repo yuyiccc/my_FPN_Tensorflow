@@ -221,7 +221,6 @@ class RPN(object):
                 all_rpn_encode_boxes = tf.concat(rpn_encode_boxes_list, axis=0)
                 return all_rpn_encode_boxes, all_rpn_scores
 
-
     def rpn_proposals(self):
         '''
         :param:self.gtboxes_and_label  shape:[-1, 5]
@@ -237,7 +236,19 @@ class RPN(object):
             if not self.is_training:
                 image_shape = tf.shape(self.img_batch)
                 rpn_decode_boxes = boxes_utils.clip_boxes_to_img_boundaries(rpn_decode_boxes, image_shape)
-                
 
+            rpn_softmax_scores = slim.softmax(self.rpn_scores)
+            rpn_object_score = rpn_softmax_scores[:, 1]
 
-        return rpn_proposals_boxes, rpn_proposals_scores
+            if self.top_k_nms:
+                rpn_object_score, top_k_indices = tf.nn.top_k(rpn_object_score, k=self.top_k_nms)
+                rpn_decode_boxes = tf.gather(rpn_decode_boxes, top_k_indices)
+
+            nms_indices = boxes_utils.non_maximal_suppression(rpn_decode_boxes,
+                                                              rpn_object_score,
+                                                              self.rpn_nms_iou_threshold,
+                                                              self.max_proposal_num)
+            valid_scores = tf.gather(rpn_object_score, nms_indices)
+            valid_boxes = tf.gather(rpn_decode_boxes, nms_indices)
+
+        return valid_boxes, valid_scores
