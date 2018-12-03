@@ -7,7 +7,7 @@ import tensorflow.contrib.slim as slim
 import sys
 sys.path.append('../../')
 from libs.box_utils import make_anchor, boxes_utils
-
+from libs.box_utils  import encode_and_decode
 
 class RPN(object):
     def __init__(self,
@@ -221,9 +221,22 @@ class RPN(object):
                 all_rpn_encode_boxes = tf.concat(rpn_encode_boxes_list, axis=0)
                 return all_rpn_encode_boxes, all_rpn_scores
 
-    # def rpn_proposals(self):
-    #
-    #
-    #
-    #
-    #     return rpn_proposals_boxes, rpn_proposals_scores
+
+    def rpn_proposals(self):
+        '''
+        :param:self.gtboxes_and_label  shape:[-1, 5]
+        :param:self.anchors: shape:[-1, 5]
+        :param:self.rpn_scores: shape:[-1, 5]
+        :param:self.rpn_encode_boxes: shape:[-1, 5]
+        :return:
+        '''
+        with tf.variable_scope('rpn_proposals'):
+            rpn_decode_boxes = encode_and_decode.decode_boxes(encode_boxes=self.rpn_encode_boxes,
+                                                              reference_boxes=self.anchors,
+                                                              scale_factors=self.scale_factors)
+            if not self.is_training:
+                image_shape = tf.shape(self.img_batch)
+                rpn_decode_boxes =
+
+
+        return rpn_proposals_boxes, rpn_proposals_scores
