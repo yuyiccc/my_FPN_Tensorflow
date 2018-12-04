@@ -6,8 +6,8 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import sys
 sys.path.append('../../')
-from libs.box_utils import make_anchor, boxes_utils
-from libs.box_utils  import encode_and_decode
+from libs.box_utils import make_anchor, boxes_utils, encode_and_decode, iou
+
 
 class RPN(object):
     def __init__(self,
@@ -223,10 +223,9 @@ class RPN(object):
 
     def rpn_proposals(self):
         '''
-        :param:self.gtboxes_and_label  shape:[-1, 5]
-        :param:self.anchors: shape:[-1, 5]
-        :param:self.rpn_scores: shape:[-1, 5]
-        :param:self.rpn_encode_boxes: shape:[-1, 5]
+        :param:self.anchors: shape:[-1, 4]->[ymin, xmin, ymax, xmax]
+        :param:self.rpn_scores: shape:[-1, 2]->[backgroud, foreground]
+        :param:self.rpn_encode_boxes: shape:[-1, 4]->[ycenter, xcenter, h, w]
         :return:
         '''
         with tf.variable_scope('rpn_proposals'):
@@ -252,3 +251,98 @@ class RPN(object):
             valid_boxes = tf.gather(rpn_decode_boxes, nms_indices)
 
         return valid_boxes, valid_scores
+
+    def rpn_loss(self):
+        '''
+        :param: self.gtboxes_and_label: [n, 5]->[ymin, xmin, ymax, xmax, cls]
+        :param: self.anchors: [m, 4]-> [ymin, xmin, ymax, xmax]
+        :param:self.rpn_encode_boxes: [m, 4]->[ycenter, xcenter, h, w]
+        :return:
+        '''
+        with tf.variable_scope('rpn_loss'):
+            minibatch_indices,\
+            minibatch_anchor_matched_gtboxes,\
+            object_mask,\
+            minibatch_label_onehot = self.make_minibatch()
+
+            minibatch_anchors = tf.gather(self.anchors, minibatch_indices)
+            minibatch_rpn_encode_boxes = tf.gather(self.rpn_encode_boxes, minibatch_indices)
+            minibatch_rpn_scores = tf.gather(self.rpn_scores, minibatch_indices)
+
+            minibatch_encode_boxes_label = encode_and_decode.encode_boxes(minibatch_anchors,
+                                                                          minibatch_anchor_matched_gtboxes,
+                                                                          self.scale_factors)
+
+
+
+    def make_minibatch(self):
+        with tf.variable_scope('rpn_minibatch'):
+            label, anchor_matched_gtboxes, object_mask = self.rpn_find_positive_negtive_samples()
+            positive_indices = tf.reshape(tf.equal(label, 1.0), [-1])
+            num_of_positive = tf.minimum(tf.shape(positive_indices)[0],
+                                         tf.cast(self.rpn_positive_ratio*self.rpn_mini_batchsize, dtype=tf.int32)
+                                         )
+            positive_indices = tf.random_shuffle(positive_indices)
+            positive_indices = tf.slice(positive_indices,
+                                        begin=[0],
+                                        size=num_of_positive)
+            negative_indices = tf.reshape(tf.equal(label, 0.0), [-1])
+            num_of_negative = tf.minimum(tf.shape(negative_indices)[0],
+                                         self.rpn_mini_batchsize-num_of_positive)
+            negative_indices = tf.random_shuffle(negative_indices)
+            negative_indices = tf.slice(negative_indices,
+                                        begin=[0],
+                                        size=num_of_negative)
+            minibatch_indices = tf.concat([positive_indices, negative_indices], axis=0)
+            minibatch_indices = tf.random_shuffle(minibatch_indices)
+
+            minibatch_anchor_matched_gtboxes  = tf.gather(anchor_matched_gtboxes, minibatch_anchor_matched_gtboxes)
+            object_mask = tf.gather(object_mask, minibatch_indices)
+            label = tf.gather(label, minibatch_anchor_matched_gtboxes)
+            onehot_label = tf.one_hot(label, depth=2)
+
+            return minibatch_indices, minibatch_anchor_matched_gtboxes, object_mask, onehot_label
+
+    def rpn_find_positive_negtive_samples(self):
+        with tf.variable_scope('find_positive_negtive_samples'):
+            gtboxes = tf.reshape(self.gtboxes_and_label[:, :-1], [-1, 4])
+            gtboxes = tf.cast(gtboxes, dtype=tf.float32)
+
+            anchors_gtboxes_iou = iou.calculate_iou(self.anchors, gtboxes)  # [m,n]
+
+            max_iou_each_anchors = tf.reduce_max(anchors_gtboxes_iou, axis=1)
+
+            # -1 means ignore 0 means negative 1 means positive
+            labels = tf.ones(shape=[tf.shape(self.anchors)[0], ], dtype=tf.float32)*(-1)
+
+            matchs = tf.cast(tf.arg_max(anchors_gtboxes_iou, dimension=1), dtype=tf.int32)
+            anchors_matched_gtboxes = tf.gather(gtboxes, matchs)
+
+            # an anchor that has IOU higher than 0.7 with any gtboxes
+            positives_1 = tf.greater_equal(max_iou_each_anchors, self.rpn_iou_positive_threshold)
+
+            # avoid there is gtbox that no anchors matched
+            max_iou_each_gtboxes = tf.reduce_max(anchors_gtboxes_iou, axis=0)
+
+            positives_2 = tf.reduce_sum(tf.cast(tf.equal(iou, max_iou_each_gtboxes), tf.float32), axis=1)
+
+            positives = tf.logical_or(positives_1, tf.cast(positives_2, tf.bool))
+
+            negative = tf.less(max_iou_each_anchors, self.rpn_iou_negtive_threshold)
+            negative = tf.logical_and(negative, tf.greater_equal(max_iou_each_gtboxes, 0.1))
+
+            labels += 2*tf.cast(positives, dtype=tf.float32)  # now, positive is 1, ignore is -1
+            labels += tf.cast(negative, dtype=tf.float32)  # positive 1.0or2.0, negative is 0.0, ignore is -1.0
+
+            # make positive 2.0  equal to 1.0
+            positives = tf.cast(tf.greater_equal(labels, 1.0), dtype=tf.float32)
+            ignore = tf.cast(tf.equal(labels, -1.0), dtype=tf.float32)*(-1)
+            labels = positives + ignore
+
+            object_mask = tf.cast(positives, dtype=tf.float32)
+
+            return labels, anchors_matched_gtboxes, object_mask
+
+
+
+

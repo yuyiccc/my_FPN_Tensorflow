@@ -34,7 +34,7 @@ class Read_tfrecord():
         img_height = tf.cast(parsed_features['img_height'], tf.int32)
         img_width = tf.cast(parsed_features['img_width'], tf.int32)
         img = tf.decode_raw(parsed_features['img'], tf.uint8)
-        img = tf.reshape(img, shape=[img_height,img_width,3])
+        img = tf.reshape(img, shape=[img_height, img_width,3])
         gtboxes_label = tf.decode_raw(parsed_features['gtbox_label'], tf.int32)
         gtboxes_label = tf.reshape(gtboxes_label, shape=[-1, 5])
         num_gtbox = tf.cast(parsed_features['num_gtbox'], tf.int32)
