@@ -70,7 +70,7 @@ def train():
                                 rpn_weight_decay=cfg.WEIGHT_DECAY
                                 )
         rpn_proposals_boxes, rpn_proposals_scores = rpn_net.rpn_proposals()
-        #rpn_location_loss, rpn_classification_loss = rpn_net.rpn_loss()
+        rpn_location_loss, rpn_classification_loss = rpn_net.rpn_loss()
 
         with tf.name_scope('draw_proposals'):
             rpn_object_indices = tf.reshape(tf.where(tf.greater(rpn_proposals_scores, 0.5)), shape=[-1])
@@ -93,6 +93,10 @@ def train():
         # rpn net's proposals
         tf.summary.image('images/rpn/proposals', rpn_proposals_boxes_in_img)
         tf.summary.image('images/rpn/objects', rpn_object_boxes_in_img)
+
+        tf.summary.scalar('losses/rpn/location_loss', rpn_location_loss)
+        tf.summary.scalar('losses/rpn/classify_loss', rpn_classification_loss)
+
 
         if debug:
             # bcckbone network

@@ -7,6 +7,8 @@ import tensorflow.contrib.slim as slim
 import sys
 sys.path.append('../../')
 from libs.box_utils import make_anchor, boxes_utils, encode_and_decode, iou
+from libs.losses import losses
+from libs.box_utils.show_boxes import draw_box_with_tensor
 
 
 class RPN(object):
@@ -272,8 +274,36 @@ class RPN(object):
             minibatch_encode_boxes_label = encode_and_decode.encode_boxes(minibatch_anchors,
                                                                           minibatch_anchor_matched_gtboxes,
                                                                           self.scale_factors)
+            # summary
+            positive_anchors_in_img = draw_box_with_tensor(img_batch=self.img_batch,
+                                                           boxes=minibatch_anchors*tf.expand_dims(object_mask, 1),
+                                                           text='anchors_positive_minibatch')
+            negative_mask = tf.cast(tf.logical_not(tf.cast(object_mask, tf.bool)), tf.float32)
+            negative_anchors_in_img = draw_box_with_tensor(img_batch=self.img_batch,
+                                                           boxes=minibatch_anchors*tf.expand_dims(negative_mask, 1),
+                                                           text='anchors_negative_minibatch')
 
+            minibatch_decode_anchors = encode_and_decode.decode_boxes(encode_boxes=minibatch_rpn_encode_boxes,
+                                                                      reference_boxes=minibatch_anchors,
+                                                                      scale_factors=self.scale_factors)
+            positive_decode_anchor_in_img = draw_box_with_tensor(img_batch=self.img_batch,
+                                                                 boxes=minibatch_decode_anchors,
+                                                                 text='decode_positive_minibatch')
 
+            tf.summary.image('images/rpn/losses/anchors_positive_minibatch', positive_anchors_in_img)
+            tf.summary.image('images/rpn/losses/anchors_negative_minibatch', negative_anchors_in_img)
+            tf.summary.image('images/rpn/losses/decode_anchor_positive', positive_decode_anchor_in_img)
+
+            # losses
+            with tf.variable_scope('rpn_localization_losses'):
+                location_loss = losses.l1_smooth_losses(predict_boxes=minibatch_rpn_encode_boxes,
+                                                        gtboxes=minibatch_encode_boxes_label,
+                                                        object_weights=object_mask)
+                slim.losses.add_loss(location_loss)  # add location loss to losses collections
+
+                classify_loss = slim.losses.softmax_cross_entropy(logits=minibatch_rpn_scores,
+                                                                  onehot_labels=minibatch_label_onehot)
+            return location_loss, classify_loss
 
     def make_minibatch(self):
         with tf.variable_scope('rpn_minibatch'):
