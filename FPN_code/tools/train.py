@@ -83,7 +83,6 @@ def train():
                                                               boxes=rpn_proposals_boxes,
                                                               text='rpn_proposals_boxes')
 
-
         ###########
         # summary #
         ###########
@@ -96,7 +95,6 @@ def train():
 
         tf.summary.scalar('losses/rpn/location_loss', rpn_location_loss)
         tf.summary.scalar('losses/rpn/classify_loss', rpn_classification_loss)
-
 
         if debug:
             # bcckbone network
@@ -134,14 +132,10 @@ def train():
                 restorer.restore(sess, checkpoint_path)
                 print('restore is done!!!')
             summary_writer = tf.summary.FileWriter(summary_path, graph=sess.graph)
-            process = ShowProcess(100)
 
-            for i in range(100):
-                process.show_process()
-                if i % 100 == 0:
-                    summary_str = sess.run(summary_op)
-                    summary_writer.add_summary(summary_str, i)
-                    summary_writer.flush()
+            summary_str = sess.run(summary_op)
+            summary_writer.add_summary(summary_str, 1)
+            summary_writer.flush()
 
                     # img_name_i, img_i, gtboxes_label_i, num_gtbox_i = sess.run((img_name, img, gtboxes_label, num_gtbox))
                     # print(img_name_i[0].decode(), i)

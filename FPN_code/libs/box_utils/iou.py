@@ -32,11 +32,12 @@ def calculate_iou(box1, box2):
 
 
 if __name__ == '__main__':
-    box1 = tf.constant([[0, 0, 50, 50], [0, 0, 100, 100]], dtype=tf.float32)
+    box1 = tf.constant([[0, 0, 50, 50]], dtype=tf.float32)
     box2 = tf.constant([[0, 0, 50, 50], [0, 0, 50, 50], [50, 50, 100, 100], [200, 234, 547, 645]], dtype=tf.float32)
 
     iou = calculate_iou(box1, box2)
+    matchs = tf.cast(tf.argmax(iou, axis=1), tf.int32)
 
     with tf.Session() as sess:
-        iou_a = sess.run(iou)
+        iou_a = sess.run([iou, matchs])
         print(iou_a)
