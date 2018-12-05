@@ -50,7 +50,7 @@ def train():
         ###############
         rpn_net = build_rpn.RPN(net_name=cfg.NETWORK_NAME,
                                 inputs=img,
-                                gtboxes_and_label=gtboxes_label,
+                                gtboxes_and_label=tf.squeeze(gtboxes_label, axis=0),
                                 is_training=True,
                                 end_point=end_point,
                                 anchor_scales=cfg.ANCHOR_SCALES,
@@ -70,6 +70,7 @@ def train():
                                 rpn_weight_decay=cfg.WEIGHT_DECAY
                                 )
         rpn_proposals_boxes, rpn_proposals_scores = rpn_net.rpn_proposals()
+        # sess = initial_part(iterator)
         rpn_location_loss, rpn_classification_loss = rpn_net.rpn_loss()
 
         with tf.name_scope('draw_proposals'):
@@ -137,11 +138,16 @@ def train():
             summary_writer.add_summary(summary_str, 1)
             summary_writer.flush()
 
-                    # img_name_i, img_i, gtboxes_label_i, num_gtbox_i = sess.run((img_name, img, gtboxes_label, num_gtbox))
-                    # print(img_name_i[0].decode(), i)
-                    # print(img_i.shape)
-                    # print(gtboxes_label_i, num_gtbox_i)
-                    # print(img_i[:4, :4, 0], '\n\n')
+
+def initial_part(iterator):
+    init_op = tf.group(
+        tf.local_variables_initializer(),
+        tf.global_variables_initializer()
+    )
+    sess = tf.InteractiveSession()
+    sess.run(init_op)
+    sess.run(iterator.initializer)
+    return sess
 
 
 if __name__ == '__main__':

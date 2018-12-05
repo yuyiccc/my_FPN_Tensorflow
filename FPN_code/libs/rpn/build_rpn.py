@@ -286,9 +286,10 @@ class RPN(object):
             minibatch_decode_anchors = encode_and_decode.decode_boxes(encode_boxes=minibatch_rpn_encode_boxes,
                                                                       reference_boxes=minibatch_anchors,
                                                                       scale_factors=self.scale_factors)
-            positive_decode_anchor_in_img = draw_box_with_tensor(img_batch=self.img_batch,
-                                                                 boxes=minibatch_decode_anchors,
-                                                                 text='decode_positive_minibatch')
+            positive_decode_anchor_in_img = \
+                draw_box_with_tensor(img_batch=self.img_batch,
+                                     boxes=minibatch_decode_anchors*tf.expand_dims(object_mask, 1),
+                                     text='decode_positive_minibatch')
 
             tf.summary.image('images/rpn/losses/anchors_positive_minibatch', positive_anchors_in_img)
             tf.summary.image('images/rpn/losses/anchors_negative_minibatch', negative_anchors_in_img)
