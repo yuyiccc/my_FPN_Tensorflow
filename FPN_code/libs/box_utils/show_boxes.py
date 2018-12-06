@@ -16,11 +16,11 @@ def draw_box_with_tensor(img_batch, boxes, text):
     :param text: image name
     :return: img_tensor_with_boxes same size as img_batch
     '''
-    def draw_box_cv(img, boxes, text):
+    def draw_box_cv(img, boxes_, text_):
         img += cfg.DEPTH_MEAN
-        boxes = boxes.astype(np.int64)
+        boxes_ = boxes_.astype(np.int64)
         img = np.array(img * 255 / np.max(img), np.uint8)
-        for box in boxes:
+        for box in boxes_:
             ymin, xmin, ymax, xmax = box[0], box[1], box[2], box[3]
 
             color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
@@ -29,10 +29,9 @@ def draw_box_with_tensor(img_batch, boxes, text):
                           pt2=(xmax, ymax),
                           color=color,
                           thickness=2)
-        if type(text) == bytes:
-            text = text.decode()
+        text_ = str(text_)
         cv2.putText(img,
-                    text=text,
+                    text=text_,
                     org=((img.shape[1]) // 2, (img.shape[0]) // 2),
                     fontFace=3,
                     fontScale=1,
@@ -45,7 +44,7 @@ def draw_box_with_tensor(img_batch, boxes, text):
     img_tensor = tf.squeeze(img_batch, 0)
     # color = tf.constant([0, 0, 255])
     img_tensor_with_boxes = tf.py_func(draw_box_cv,
-                                       inp=[img_tensor, boxes, text[0]],
+                                       inp=[img_tensor, boxes, text],
                                        Tout=[tf.uint8])
 
     img_tensor_with_boxes = tf.reshape(img_tensor_with_boxes, tf.shape(img_batch))
