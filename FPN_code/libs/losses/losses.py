@@ -27,8 +27,8 @@ def l1_smooth_losses(predict_boxes,
                      0.5*tf.square(diff)*classes_weights,
                      (diff-0.5)*classes_weights)
         )*object_weights
-
-    losses = tf.reduce_mean(boxes_smooth_l1_losses, axis=0)
+    num_object = tf.shape(tf.where(tf.equal(object_weights, 1)))[0]
+    losses = tf.reduce_sum(boxes_smooth_l1_losses, axis=0)/tf.cast(num_object, tf.float32)
 
     return losses
 

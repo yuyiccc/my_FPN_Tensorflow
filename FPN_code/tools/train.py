@@ -30,8 +30,12 @@ def train():
 
         with tf.name_scope('draw_gtboxes'):
             gtboxes_in_img = draw_box_with_tensor(img,
-                                                  tf.reshape(gtboxes_label, [-1, 5]),
+                                                  tf.reshape(gtboxes_label, [-1, 5])[:, :-1],
                                                   text=img_name)
+        # original_img = tf.squeeze(img, axis=0)+tf.constant(cfg.DEPTH_MEAN)
+        # original_img = tf.reshape(original_img, shape=tf.shape(img))
+        # tf.summary.image('images/original_images', original_img)
+
 
         ####################
         # backbone network #
@@ -79,8 +83,8 @@ def train():
                                          indices=rpn_object_indices)
             rpn_object_boxes_in_img = draw_box_with_tensor(img_batch=img,
                                                            boxes=rpn_object_boxes,
-                                                           text=img_name)
-            # 'rpn_object_boxes'
+                                                           text='rpn_object_boxes')
+
             rpn_proposals_boxes_in_img = draw_box_with_tensor(img_batch=img,
                                                               boxes=rpn_proposals_boxes,
                                                               text='rpn_proposals_boxes')
