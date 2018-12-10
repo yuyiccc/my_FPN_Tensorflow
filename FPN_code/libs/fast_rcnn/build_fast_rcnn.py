@@ -3,6 +3,10 @@
 # Time :2018/12/6 17:13
 import tensorflow as tf
 from tensorflow.contrib import slim
+import sys
+sys.path.append('../../')
+from libs.box_utils.encode_and_decode import encode_boxes,decode_boxes
+from libs.box_utils import boxes_utils
 
 class FastRcnn(object):
     def __init__(self,
@@ -16,7 +20,11 @@ class FastRcnn(object):
                  levels,
                  is_training,
                  weights_regularizer,
-                 num_cls
+                 num_cls,
+                 scale_factors,
+                 fast_rcnn_nms_iou_threshold,
+                 max_num_per_class,
+                 fast_rcnn_score_threshold
                  ):
         '''
         :param img_batch: [1,h,w,3]
@@ -29,9 +37,14 @@ class FastRcnn(object):
         :param levels: ['p2', 'p3',...]
         :param is_training: bool type
         :param weights_regularizer: int type
+        :param num_cls: int type
+        :param scale_factors [4,]
+        :param fast_rcnn_nms_iou_threshold :float type
+        :param max_num_per_class: int type
+        :param fast_rcnn_score_threshold: float type, thresh the low score boxes
         '''
         self.img_batch = img_batch
-        self.img_shape = tf.cast(tf.shape(img_batch)[1:3], dtype=tf.float32)
+        self.img_shape = tf.shape(img_batch)
         self.feature_dict = feature_dict
         self.rpn_proposal_boxes = rpn_proposal_boxes
         self.rpn_proposal_scores = rpn_proposal_scores
@@ -44,6 +57,10 @@ class FastRcnn(object):
         self.is_training = is_training
         self.weights_regularizer = weights_regularizer
         self.num_cls = num_cls
+        self.scale_factors = scale_factors
+        self.fast_rcnn_nms_iou_threshold = fast_rcnn_nms_iou_threshold
+        self.max_num_per_class = max_num_per_class
+        self.fast_rcnn_score_threshold = fast_rcnn_score_threshold
 
         self.rois_feature, self.rois_boxes = self.get_rois()
         self.fast_rcnn_cls_scores, self.fast_rcnn_encode_boxes = self.fast_rcnn_net()
@@ -86,10 +103,11 @@ class FastRcnn(object):
 
                 # normalize the coordinate
                 ymin, xmin, ymax, xmax = tf.unstack(level_i_boxes, axis=1)
-                ymin /= self.img_shape[0]
-                xmin /= self.img_shape[1]
-                ymax /= self.img_shape[0]
-                xmax /= self.img_shape[1]
+                img_h, img_w = tf.cast(self.img_shape[1], tf.float32), tf.cast(self.img_shape[2], tf.float32)
+                ymin /= img_h
+                xmin /= img_w
+                ymax /= img_h
+                xmax /= img_w
 
                 level_i_cropped_rois = tf.image.crop_and_resize(level_i_feature,
                                                                 boxes=tf.transpose(tf.stack([ymin, xmin, ymax, xmax])),
@@ -172,7 +190,81 @@ class FastRcnn(object):
 
         return fast_rcnn_cls_score, fast_rcnn_encode_boxes
 
+    def fast_rcnn_prediction(self):
+        '''
+        :param: self.fast_rcnn_cls_scores, [2000, num_cls+1], num_cls+background
+        :param: self.fast_rcnn_encode_boxes, [2000, num_cls*4]
+        :return: fast_rcnn_decode_boxes, [-1, 4]
+        :return: fast_rcnn_category, [-1, ]
+        :return: fast_rcnn_scores, [-1, ]
+        :return: num_object, [-1, ]
+        '''
+        with tf.variable_scope('fast_rcnn_predict'):
+            fast_rcnn_softmax_score = slim.softmax(self.fast_rcnn_cls_scores)
 
+            fast_rcnn_encode_boxes = tf.reshape(self.fast_rcnn_encode_boxes, [-1, 4])
+            fast_rcnn_reference_boxes = tf.tile(self.rois_boxes, [1, self.num_cls])
+            fast_rcnn_reference_boxes = tf.reshape(fast_rcnn_reference_boxes, [-1, 4])
 
+            # ues encode boxes to decode the reference boxes
+            fast_rcnn_decode_boxes = decode_boxes(encode_boxes=fast_rcnn_encode_boxes,
+                                                  reference_boxes=fast_rcnn_reference_boxes,
+                                                  scale_factors=self.scale_factors)
+            # clip decode boxes to image shape
+            fast_rcnn_decode_boxes = boxes_utils.clip_boxes_to_img_boundaries(boxes=fast_rcnn_decode_boxes,
+                                                                              img_shape=self.img_shape)
 
+            # mutil-class nms
+            fast_rcnn_decode_boxes = tf.reshape(fast_rcnn_decode_boxes, [-1, 4*self.num_cls])
+            fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object = \
+                self.mutil_class_nms(boxes=fast_rcnn_decode_boxes,
+                                     scores=fast_rcnn_softmax_score)
+            return fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object
 
+    def mutil_class_nms(self, boxes, scores):
+        '''
+        :param boxes: [N, num_cls*4]
+        :param scores:  [N, num_cls+1]
+        :return:
+        '''
+        category = tf.argmax(scores, axis=1)
+        object_mask = tf.cast(tf.not_equal(category, 0), tf.float32)
+
+        boxes = boxes * tf.expand_dims(object_mask, axis=1)
+        scores = scores * tf.expand_dims(object_mask, axis=1)
+
+        boxes = tf.reshape(boxes, [-1, self.num_cls, 4])
+
+        boxes_list = tf.unstack(boxes, axis=1)
+        scores_list = tf.unstack(scores[:, 1:], axis=1)
+
+        filter_boxes_list = []
+        filter_category_list = []
+        filter_scores_list = []
+
+        for boxes_i, scores_i in zip(boxes_list, scores_list):
+            indices_i = boxes_utils.non_maximal_suppression(boxes=boxes_i,
+                                                            scores=scores_i,
+                                                            iou_threshold=self.fast_rcnn_nms_iou_threshold,
+                                                            max_output_size=self.max_num_per_class,
+                                                            name='fast_rcnn_nms')
+            filter_boxes_list.append(tf.gather(boxes_i, indices_i))
+            filter_category_list.append(tf.gather(category, indices_i))
+            filter_scores_list.append(tf.gather(scores_i, indices_i))
+
+        filter_boxes = tf.concat(filter_boxes_list, axis=0)
+        filter_category = tf.concat(filter_category_list, axis=0)
+        filter_scores = tf.concat(filter_scores_list, axis=0)
+
+        # filter low scores boxes
+        scores_indices = tf.reshape(tf.where(tf.greater(filter_scores, self.fast_rcnn_score_threshold)), [-1])
+        filter_boxes = tf.gather(filter_boxes, scores_indices)
+        filter_category = tf.gather(filter_category, scores_indices)
+        filter_scores = tf.gather(filter_scores, scores_indices)
+
+        # clip boxes into image shape
+        # boxes_utils.clip_boxes_to_img_boundaries(boxes=filter_boxes,
+        #                                          img_shape=self.img_shape)
+        num_object = tf.shape(scores_indices)
+
+        return filter_boxes, filter_category, filter_scores, num_object

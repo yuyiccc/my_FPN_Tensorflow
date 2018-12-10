@@ -7,6 +7,7 @@ import cv2
 import sys
 sys.path.append("../../")
 import configs.global_cfg as cfg
+from libs.label_name_dict import NUMBER_TO_LABEL
 
 
 def draw_box_with_tensor(img_batch, boxes, text):
@@ -43,6 +44,58 @@ def draw_box_with_tensor(img_batch, boxes, text):
     # color = tf.constant([0, 0, 255])
     img_tensor_with_boxes = tf.py_func(draw_box_cv,
                                        inp=[img_tensor, boxes, text],
+                                       Tout=[tf.uint8])
+
+    img_tensor_with_boxes = tf.reshape(img_tensor_with_boxes, tf.shape(img_batch))
+
+    return img_tensor_with_boxes
+
+
+def draw_boxes_with_category(img_batch, boxes, category, scores):
+    '''
+    :param img_batch: [1,h,w,3]
+    :param boxes: [n, 4]
+    :param category: [n,]
+    :param scores: [n,]
+    :return:
+    '''
+
+    def draw_box_cv(img, boxes, category, scores):
+        img = img + np.array([103.939, 116.779, 123.68])
+        boxes = boxes.astype(np.int64)
+        img = np.array(img * 255 / np.max(img), np.uint8)
+        for box_i, category_i, score_i in zip(boxes, category, scores):
+            ymin, xmin, ymax, xmax = box_i[0], box_i[1], box_i[2], box_i[3]
+
+            color = (np.random.randint(255), np.random.randint(255), np.random.randint(255))
+            cv2.rectangle(img,
+                          pt1=(xmin, ymin),
+                          pt2=(xmax, ymax),
+                          color=color,
+                          thickness=2)
+            category_i = NUMBER_TO_LABEL[category_i]
+            cv2.putText(img,
+                        text=category_i+": "+str(score_i),
+                        org=(xmin, ymin+10),
+                        fontFace=1,
+                        fontScale=1,
+                        thickness=2,
+                        color=color)
+
+        cv2.putText(img,
+                    text=str(category.shape[0]),
+                    org=(img.shape[1]//2, img.shape[0]//2),
+                    fontFace=1,
+                    fontScale=3,
+                    color=(255, 0, 0))
+        # img = np.transpose(img, [2, 1, 0])
+        img = img[:, :, -1::-1]
+        return img
+
+    img_tensor = tf.squeeze(img_batch, 0)
+    # color = tf.constant([0, 0, 255])
+    img_tensor_with_boxes = tf.py_func(draw_box_cv,
+                                       inp=[img_tensor, boxes, category, scores],
                                        Tout=[tf.uint8])
 
     img_tensor_with_boxes = tf.reshape(img_tensor_with_boxes, tf.shape(img_batch))

@@ -6,7 +6,7 @@ import tensorflow as tf
 import sys
 sys.path.append("../")
 from data.IO.read_tfrecord import Read_tfrecord
-from libs.box_utils.show_boxes import draw_box_with_tensor
+from libs.box_utils.show_boxes import draw_box_with_tensor, draw_boxes_with_category
 import configs.global_cfg as cfg
 from  tools.assist_tools import ShowProcess, check_and_create_paths
 from libs.networks.network_factory import get_network_byname
@@ -69,6 +69,7 @@ def train():
                                 level=cfg.LEVEL,
                                 top_k_nms=cfg.TOP_K_NMS,
                                 share_head=cfg.IS_SHARE_HEAD,
+                                rpn_nms_iou_threshold=cfg.RPN_NMS_IOU_THRESHOLD,
                                 max_proposal_num=cfg.MAX_PROPOSAL_NUM,
                                 rpn_iou_positive_threshold=cfg.RPN_IOU_POSITIVE_THRESHOLD,
                                 rpn_iou_negtive_threshold=cfg.RPN_IOU_NEGATIVE_THRESHOLD,
@@ -106,8 +107,19 @@ def train():
                                              levels=cfg.LEVEL,
                                              is_training=True,
                                              weights_regularizer=cfg.FAST_RCNN_WEIGHTS_DECAY,
-                                             num_cls=cfg.NUM_CLASSES
+                                             num_cls=cfg.NUM_CLASSES,
+                                             scale_factors=cfg.SCALE_FACTOR,
+                                             fast_rcnn_nms_iou_threshold=cfg.FAST_RCNN_NMS_IOU_THRESHOLD,
+                                             max_num_per_class=cfg.MAX_NUM_PER_CLASS,
+                                             fast_rcnn_score_threshold=cfg.FAST_RCNN_SCORE_THRESHOLD
                                              )
+        fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object = \
+            fast_rcnn.fast_rcnn_prediction()
+
+        fast_rcnn_prediction_in_image = draw_boxes_with_category(img_batch=img,
+                                                                 boxes=fast_rcnn_decode_boxes,
+                                                                 category=fast_rcnn_category,
+                                                                 scores=fast_rcnn_scores)
 
         ###########
         # summary #
@@ -123,6 +135,9 @@ def train():
         tf.summary.scalar('losses/rpn/location_loss', rpn_location_loss)
         tf.summary.scalar('losses/rpn/classify_loss', rpn_classification_loss)
 
+        # fast rcnn prediction boxes
+        tf.summary.image('images/fast_rcnn/prediction_boxes', fast_rcnn_prediction_in_image)
+
         if debug:
             # bcckbone network
             for key in end_point.keys():
@@ -134,6 +149,9 @@ def train():
             image_with_anchor_list = debug_rpn.debug_rpn(rpn_net, img)
             for i, image_with_anchor in enumerate(image_with_anchor_list):
                 tf.summary.image('anchors/image_with_anchors_'+str(i), image_with_anchor[0])
+            # fast rcnn prediction
+            tf.summary.tensor_summary('image_shape', tf.shape(img[1:]))
+            tf.summary.tensor_summary('fast_rcnn_prediction_boxes', fast_rcnn_decode_boxes)
 
         summary_op = tf.summary.merge_all()
         summary_path = cfg.SUMMARY_PATH

@@ -19,7 +19,7 @@ DATASET_NAME = 'pascal'
 # network name
 NETWORK_NAME = 'resnet_v1_50'
 # version
-VERSION = 'debug_fast_rcnn_predict'
+VERSION = 'debug_fast_rcnn_predict_boxes'
 # summary path
 SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
 # backbone network pretrain path
@@ -62,6 +62,8 @@ STRIDE = [4, 8, 16, 32, 64]
 LEVEL = ['P2', 'P3', 'P4', 'P5', 'P6']
 # top k nms
 TOP_K_NMS = 12000
+# rpn_nms_iou_threshold
+RPN_NMS_IOU_THRESHOLD = 0.5
 # max number of proposal
 MAX_PROPOSAL_NUM = 2000
 # mini batch size of rpn
@@ -87,10 +89,13 @@ CROP_SIZE = 14
 ROI_POOLING_KERNEL_SIZE = 2
 # fast rcnn weights decay
 FAST_RCNN_WEIGHTS_DECAY = 1e-4
+# fast_rcnn_nms_iou_threshold
+FAST_RCNN_NMS_IOU_THRESHOLD = 0.5
+# max_num_per_class
+MAX_NUM_PER_CLASS = 100
+# fast_rcnn_score_threshold
+FAST_RCNN_SCORE_THRESHOLD = 0.5
 
-
-
-
-if __name__=='__main__':
+if __name__ == '__main__':
     # test this cfg.py
     print(NUM_CLASSES)

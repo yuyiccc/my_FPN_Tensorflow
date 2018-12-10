@@ -6,7 +6,7 @@ sys.path.append('../')
 import configs.global_cfg as cfg
 
 
-if cfg.DATASET_NAME=='pascal':
+if cfg.DATASET_NAME == 'pascal':
     LABEL_TO_NUMBER = {
         'back_ground': 0,
         'aeroplane': 1,
