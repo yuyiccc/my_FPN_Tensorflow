@@ -150,7 +150,7 @@ def train():
             for i, image_with_anchor in enumerate(image_with_anchor_list):
                 tf.summary.image('anchors/image_with_anchors_'+str(i), image_with_anchor[0])
             # fast rcnn prediction
-            tf.summary.tensor_summary('image_shape', tf.shape(img[1:]))
+            tf.summary.tensor_summary('image_shape', tf.shape(img))
             tf.summary.tensor_summary('fast_rcnn_prediction_boxes', fast_rcnn_decode_boxes)
 
         summary_op = tf.summary.merge_all()

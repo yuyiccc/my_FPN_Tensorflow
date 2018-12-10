@@ -34,7 +34,7 @@ elif tensor_name == 'fast_rcnn_predict':
     tag_name = ['fast_rcnn_net/summary_fast_rcnn_encode_boxes', 'fast_rcnn_net/summary_fast_rcnn_cls_scores']
     load_and_see_tensor(summary_path, tag_name)
 elif tensor_name == 'fast_rcnn_boxes_prediction':
-    summary_path = "F:\\tensorflow\\detections\\my_FPN_Tensorflow\\outer_path\\output\\summary\\resnet_v1_50_pascal_debug_fast_rcnn_predict_boxes\\events.out.tfevents.1544449905.WIN-RR5RDDKFI20"
+    summary_path = "F:\\tensorflow\\detections\\my_FPN_Tensorflow\\outer_path\\output\\summary\\resnet_v1_50_pascal_debug_fast_rcnn_predict_boxes\\events.out.tfevents.1544450714.WIN-RR5RDDKFI20"
     tag_name = ['fast_rcnn_prediction_boxes', 'image_shape']
     load_and_see_tensor(summary_path, tag_name)
 else:
