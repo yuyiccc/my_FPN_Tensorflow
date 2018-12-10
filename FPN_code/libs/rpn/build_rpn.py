@@ -228,7 +228,8 @@ class RPN(object):
         :param:self.anchors: shape:[-1, 4]->[ymin, xmin, ymax, xmax]
         :param:self.rpn_scores: shape:[-1, 2]->[backgroud, foreground]
         :param:self.rpn_encode_boxes: shape:[-1, 4]->[ycenter, xcenter, h, w]
-        :return:
+        :return: valid_boxes [2000, 4]
+        :return: valid_scores [2000,]
         '''
         with tf.variable_scope('rpn_proposals'):
             rpn_decode_boxes = encode_and_decode.decode_boxes(encode_boxes=self.rpn_encode_boxes,

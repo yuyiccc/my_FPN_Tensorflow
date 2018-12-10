@@ -21,12 +21,15 @@ def l1_smooth_losses(predict_boxes,
     if classes_weights is None:
         boxes_smooth_l1_losses = tf.reduce_sum(
             tf.where(tf.less(diff, 1), 0.5*tf.square(diff), diff-0.5), axis=1)*object_weights
+        # tf.summary.tensor_summary('tensor/location_l1_loss', boxes_smooth_l1_losses)
     else:
         boxes_smooth_l1_losses = tf.reduce_sum(
             tf.where(tf.less(diff, 1),
                      0.5*tf.square(diff)*classes_weights,
                      (diff-0.5)*classes_weights)
         )*object_weights
+
+
     num_object = tf.shape(tf.where(tf.equal(object_weights, 1)))[0]
     losses = tf.reduce_sum(boxes_smooth_l1_losses, axis=0)/tf.cast(num_object, tf.float32)
 

@@ -19,7 +19,7 @@ DATASET_NAME = 'pascal'
 # network name
 NETWORK_NAME = 'resnet_v1_50'
 # version
-VERSION = 'debug_rpn_loss_function'
+VERSION = 'debug_fast_rcnn_predict'
 # summary path
 SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
 # backbone network pretrain path
@@ -38,7 +38,7 @@ BATCH_SIZE = 1
 # epoch
 EPOCH = 20
 # num classes
-NUM_CLASSES = 21
+NUM_CLASSES = 20
 
 #####################
 # network parameter #
@@ -78,7 +78,15 @@ RPN_IOU_NEGATIVE_THRESHOLD = 0.3
 RPN_WEIGHT_DECAY = 1e-4
 # whether share head
 IS_SHARE_HEAD = True
-#
+
+# -----fast rcnn net---------
+
+# crop size
+CROP_SIZE = 14
+# roi_pooling_kernel_size
+ROI_POOLING_KERNEL_SIZE = 2
+# fast rcnn weights decay
+FAST_RCNN_WEIGHTS_DECAY = 1e-4
 
 
 

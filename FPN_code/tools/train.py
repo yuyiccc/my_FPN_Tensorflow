@@ -11,8 +11,12 @@ import configs.global_cfg as cfg
 from  tools.assist_tools import ShowProcess, check_and_create_paths
 from libs.networks.network_factory import get_network_byname
 from libs.rpn import build_rpn, debug_rpn
+from libs.fast_rcnn import build_fast_rcnn
 from  tools.restore_model import get_restorer
 import tensorflow.contrib.slim as slim
+
+
+
 
 debug = True
 
@@ -71,11 +75,11 @@ def train():
                                 rpn_mini_batchsize=cfg.RPN_MINI_BATCH_SIZE,
                                 rpn_positive_ratio=cfg.POSITIVE_RATIO,
                                 remove_outside_anchors=cfg.IS_FILTER_OUTSIDE_ANCHORS,
-                                rpn_weight_decay=cfg.WEIGHT_DECAY
+                                rpn_weight_decay=cfg.RPN_WEIGHT_DECAY
                                 )
         rpn_proposals_boxes, rpn_proposals_scores = rpn_net.rpn_proposals()
-        # sess = initial_part(iterator)
         rpn_location_loss, rpn_classification_loss = rpn_net.rpn_loss()
+        rpn_net_loss = rpn_location_loss+rpn_classification_loss
 
         with tf.name_scope('draw_proposals'):
             rpn_object_indices = tf.reshape(tf.where(tf.greater(rpn_proposals_scores, 0.5)), shape=[-1])
@@ -87,7 +91,23 @@ def train():
 
             rpn_proposals_boxes_in_img = draw_box_with_tensor(img_batch=img,
                                                               boxes=rpn_proposals_boxes,
-                                                              text='rpn_proposals_boxes')
+                                                              text=tf.shape(rpn_proposals_boxes)[0])
+
+        #############
+        # fast-rcnn #
+        #############
+        fast_rcnn = build_fast_rcnn.FastRcnn(img_batch=img,
+                                             feature_dict=rpn_net.feature_pyramid,
+                                             rpn_proposal_boxes=rpn_proposals_boxes,
+                                             rpn_proposal_scores=rpn_proposals_scores,
+                                             gtboxes_and_label=gtboxes_label,
+                                             crop_size=cfg.CROP_SIZE,
+                                             roi_pooling_kernel_size=cfg.ROI_POOLING_KERNEL_SIZE,
+                                             levels=cfg.LEVEL,
+                                             is_training=True,
+                                             weights_regularizer=cfg.FAST_RCNN_WEIGHTS_DECAY,
+                                             num_cls=cfg.NUM_CLASSES
+                                             )
 
         ###########
         # summary #
