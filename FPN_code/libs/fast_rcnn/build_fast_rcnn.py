@@ -7,6 +7,7 @@ import sys
 sys.path.append('../../')
 from libs.box_utils.encode_and_decode import encode_boxes,decode_boxes
 from libs.box_utils import boxes_utils
+from libs.box_utils.iou import calculate_iou
 
 class FastRcnn(object):
     def __init__(self,
@@ -24,7 +25,8 @@ class FastRcnn(object):
                  scale_factors,
                  fast_rcnn_nms_iou_threshold,
                  max_num_per_class,
-                 fast_rcnn_score_threshold
+                 fast_rcnn_score_threshold,
+                 fast_rcnn_positive_threshold_iou
                  ):
         '''
         :param img_batch: [1,h,w,3]
@@ -42,6 +44,7 @@ class FastRcnn(object):
         :param fast_rcnn_nms_iou_threshold :float type
         :param max_num_per_class: int type
         :param fast_rcnn_score_threshold: float type, thresh the low score boxes
+        :param fast_rcnn_positive_threshold_iou  :proposal which greater this threshold is a positive sample
         '''
         self.img_batch = img_batch
         self.img_shape = tf.shape(img_batch)
@@ -61,6 +64,7 @@ class FastRcnn(object):
         self.fast_rcnn_nms_iou_threshold = fast_rcnn_nms_iou_threshold
         self.max_num_per_class = max_num_per_class
         self.fast_rcnn_score_threshold = fast_rcnn_score_threshold
+        self.fast_rcnn_positive_threshold_iou = fast_rcnn_positive_threshold_iou
 
         self.rois_feature, self.rois_boxes = self.get_rois()
         self.fast_rcnn_cls_scores, self.fast_rcnn_encode_boxes = self.fast_rcnn_net()
@@ -262,9 +266,57 @@ class FastRcnn(object):
         filter_category = tf.gather(filter_category, scores_indices)
         filter_scores = tf.gather(filter_scores, scores_indices)
 
-        # clip boxes into image shape
-        # boxes_utils.clip_boxes_to_img_boundaries(boxes=filter_boxes,
-        #                                          img_shape=self.img_shape)
         num_object = tf.shape(scores_indices)
 
         return filter_boxes, filter_category, filter_scores, num_object
+
+    def fast_rcnn_loss(self):
+        '''
+        :return:
+        '''
+        self.make_minibatch()
+        pass
+
+    def make_minibatch(self):
+        proposal_matched_boxes, proposal_matched_label, object_mask = \
+            self.match_predict_and_gtboxes()
+
+        pass
+
+    def match_predict_and_gtboxes(self):
+        '''
+        :param
+        :return:
+        '''
+        gt_boxes = tf.cast(self.gtboxes_and_label[:, :4], tf.float32)
+        gt_label = self.gtboxes_and_label[:, -1]
+        # tf.summary.tensor_summary('gt_boxes', gt_boxes)
+        # tf.summary.tensor_summary('gt_label', gt_label)
+        # tf.summary.tensor_summary('gtboxes_and_label', self.gtboxes_and_label)
+
+        iou_proposal_gtboxes = calculate_iou(self.rpn_proposal_boxes, gt_boxes)
+
+        #
+        max_iou_per_proposal = tf.reduce_max(iou_proposal_gtboxes, axis=1)
+
+        match_indices = tf.cast(tf.argmax(iou_proposal_gtboxes, axis=1), tf.int32)
+        # tf.summary.tensor_summary('iou_proposal_gtboxes', iou_proposal_gtboxes)
+        # tf.summary.tensor_summary('max_iou_per_proposal', max_iou_per_proposal)
+        # tf.summary.tensor_summary('match_indices', match_indices)
+        # [2000, 4]
+        proposal_matched_boxes = tf.gather(gt_boxes, match_indices)
+
+        positive_mask = tf.greater(max_iou_per_proposal, self.fast_rcnn_positive_threshold_iou)
+        object_mask = tf.cast(positive_mask, tf.int32)
+
+        # make negative sample's cls label to background
+        proposal_matched_label = tf.gather(gt_label, match_indices)
+        proposal_matched_label = proposal_matched_label * object_mask
+
+        # check those return
+        # tf.summary.tensor_summary('proposal_matched_boxes', proposal_matched_boxes)
+        # tf.summary.tensor_summary('proposal_matched_label', proposal_matched_label)
+        # tf.summary.tensor_summary('object_mask', object_mask)
+        # tf.summary.tensor_summary('max_iou_per_proposal', max_iou_per_proposal)
+
+        return proposal_matched_boxes, proposal_matched_label, object_mask

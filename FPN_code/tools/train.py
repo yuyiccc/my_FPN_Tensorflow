@@ -101,7 +101,7 @@ def train():
                                              feature_dict=rpn_net.feature_pyramid,
                                              rpn_proposal_boxes=rpn_proposals_boxes,
                                              rpn_proposal_scores=rpn_proposals_scores,
-                                             gtboxes_and_label=gtboxes_label,
+                                             gtboxes_and_label=tf.squeeze(gtboxes_label, axis=0),
                                              crop_size=cfg.CROP_SIZE,
                                              roi_pooling_kernel_size=cfg.ROI_POOLING_KERNEL_SIZE,
                                              levels=cfg.LEVEL,
@@ -111,11 +111,12 @@ def train():
                                              scale_factors=cfg.SCALE_FACTOR,
                                              fast_rcnn_nms_iou_threshold=cfg.FAST_RCNN_NMS_IOU_THRESHOLD,
                                              max_num_per_class=cfg.MAX_NUM_PER_CLASS,
-                                             fast_rcnn_score_threshold=cfg.FAST_RCNN_SCORE_THRESHOLD
+                                             fast_rcnn_score_threshold=cfg.FAST_RCNN_SCORE_THRESHOLD,
+                                             fast_rcnn_positive_threshold_iou=cfg.FAST_RCNN_POSITIVE_THRESHOLD_IOU
                                              )
         fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object = \
             fast_rcnn.fast_rcnn_prediction()
-
+        fast_rcnn.fast_rcnn_loss()
         fast_rcnn_prediction_in_image = draw_boxes_with_category(img_batch=img,
                                                                  boxes=fast_rcnn_decode_boxes,
                                                                  category=fast_rcnn_category,

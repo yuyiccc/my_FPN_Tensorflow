@@ -19,7 +19,7 @@ DATASET_NAME = 'pascal'
 # network name
 NETWORK_NAME = 'resnet_v1_50'
 # version
-VERSION = 'debug_fast_rcnn_predict_boxes'
+VERSION = 'debug_fast_rcnn_match_proposal_function'
 # summary path
 SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
 # backbone network pretrain path
@@ -95,6 +95,8 @@ FAST_RCNN_NMS_IOU_THRESHOLD = 0.5
 MAX_NUM_PER_CLASS = 100
 # fast_rcnn_score_threshold
 FAST_RCNN_SCORE_THRESHOLD = 0.5
+# fast_rcnn_positive_threshold_iou
+FAST_RCNN_POSITIVE_THRESHOLD_IOU = 0.5
 
 if __name__ == '__main__':
     # test this cfg.py
