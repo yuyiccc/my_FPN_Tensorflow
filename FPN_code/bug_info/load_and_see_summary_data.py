@@ -58,7 +58,11 @@ if __name__ == '__main__':
         load_and_see_tensor(summary_path, tag_name)
     elif summary_name == 'resnet_v1_50_pascal_debug_fast_rcnn_minibatch_function':
         summary_path = find_file(summary_path)
-        tag_name = ['minibatch_indices', 'minibatch_matched_boxes', 'minibatch_matched_label', 'max_iou_per_proposal']
+        tag_name = ['minibatch_indices',
+                    'minibatch_matched_boxes',
+                    'minibatch_matched_onehot_label',
+                    'max_iou_per_proposal',
+                    'minibatch_object_mask']
         load_and_see_tensor(summary_path, tag_name)
     else:
         print('tensor name not included!!!')

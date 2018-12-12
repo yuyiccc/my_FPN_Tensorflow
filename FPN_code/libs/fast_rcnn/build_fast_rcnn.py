@@ -282,7 +282,10 @@ class FastRcnn(object):
         '''
         :return:
         '''
-        self.make_minibatch()
+        minibatch_indices, minibatch_gtboxes, minibatch_onehot_label, minibatch_object_mask = self.make_minibatch()
+
+        minibatch_encode_boxes = tf.gather(self.rpn_proposal_boxes, minibatch_indices)
+        minibatch_scores = tf.gather(self.rpn_proposal_scores, minibatch_indices)
         pass
 
     def make_minibatch(self):
@@ -312,12 +315,16 @@ class FastRcnn(object):
         minibatch_matched_boxes = tf.gather(proposal_matched_boxes, minibatch_indices)
         minibatch_matched_label = tf.gather(proposal_matched_label, minibatch_indices)
 
+        minibatch_object_mask = tf.gather(object_mask, minibatch_indices)
+        minibatch_matched_onehot_label = tf.one_hot(minibatch_matched_label, depth=self.num_cls+1)
+
         # check this function's return
         tf.summary.tensor_summary('minibatch_indices', minibatch_indices)
         tf.summary.tensor_summary('minibatch_matched_boxes', minibatch_matched_boxes)
-        tf.summary.tensor_summary('minibatch_matched_label', minibatch_matched_label)
+        tf.summary.tensor_summary('minibatch_matched_onehot_label', minibatch_matched_onehot_label)
+        tf.summary.tensor_summary('minibatch_object_mask', minibatch_object_mask)
 
-        return minibatch_indices, minibatch_matched_boxes, minibatch_matched_label
+        return minibatch_indices, minibatch_matched_boxes, minibatch_matched_onehot_label, minibatch_object_mask
 
     def match_predict_and_gtboxes(self):
         '''
