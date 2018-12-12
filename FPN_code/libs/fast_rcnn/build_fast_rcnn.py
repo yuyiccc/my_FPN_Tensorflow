@@ -8,7 +8,7 @@ sys.path.append('../../')
 from libs.box_utils.encode_and_decode import encode_boxes,decode_boxes
 from libs.box_utils import boxes_utils
 from libs.box_utils.iou import calculate_iou
-
+from libs.losses import losses
 
 class FastRcnn(object):
     def __init__(self,
@@ -282,47 +282,80 @@ class FastRcnn(object):
         '''
         :return:
         '''
-        minibatch_indices, minibatch_gtboxes, minibatch_onehot_label, minibatch_object_mask = self.make_minibatch()
+        with tf.variable_scope('fast_rcnn_loss'):
+            minibatch_indices, minibatch_gtboxes, minibatch_onehot_label, minibatch_object_mask = self.make_minibatch()
 
-        minibatch_encode_boxes = tf.gather(self.rpn_proposal_boxes, minibatch_indices)
-        minibatch_scores = tf.gather(self.rpn_proposal_scores, minibatch_indices)
-        pass
+            minibatch_proposal_boxes = tf.gather(self.rpn_proposal_boxes, minibatch_indices)
+            minibatch_predict_scores = tf.gather(self.fast_rcnn_encode_boxes, minibatch_indices)
+            minibatch_predict_encode_boxes = tf.gather(self.fast_rcnn_cls_scores)
+
+            # encode minibatch_gtboxes
+            minibatch_encode_gtboxes = encode_boxes(anchors=minibatch_proposal_boxes,
+                                                    gtboxes=minibatch_gtboxes,
+                                                    scale_factors=self.scale_factors)
+
+            # [minibatch_size, 4]->[minibatch_size, num_cls*4]
+            minibatch_encode_gtboxes = tf.tile(minibatch_encode_gtboxes, [1, self.num_cls])
+
+            # class_weight_mask [minibatch_size, num_cls*4]
+            class_weight_mask_list = []
+            category_list = tf.unstack(minibatch_onehot_label, axis=1)
+            for i in range(1, self.num_cls+1):
+                class_weight = tf.ones([self.fast_rcnn_minibatch_size, 4], dtype=tf.float32)
+                class_weight = class_weight * tf.expand_dims(category_list, axis=1)
+                class_weight_mask_list.append(class_weight)
+
+            class_weight_mask = tf.concat(class_weight_mask_list, axis=1)
+
+            # cls loss
+            fast_rcnn_cls_loss = slim.losses.softmax_cross_entropy(logits=minibatch_predict_scores,
+                                                                   onehot_labels=minibatch_onehot_label)
+
+            # boxes loss
+            fast_rcnn_boxes_loss = losses.l1_smooth_losses(predict_boxes=minibatch_predict_encode_boxes,
+                                                           gtboxes=minibatch_encode_gtboxes,
+                                                           object_weights=minibatch_object_mask,
+                                                           classes_weights=class_weight_mask)
+            # check loss and decode boxes
+
+        return fast_rcnn_boxes_loss, fast_rcnn_cls_loss
 
     def make_minibatch(self):
-        proposal_matched_boxes, proposal_matched_label, object_mask = \
-            self.match_predict_and_gtboxes()
+        with tf.variable_scope('make_minibatch'):
+            proposal_matched_boxes, proposal_matched_label, object_mask = \
+                self.match_predict_and_gtboxes()
 
-        positive_indices = tf.reshape(tf.where(tf.equal(object_mask, 1)), [-1])
-        true_num_positive = tf.shape(positive_indices)[0]
-        num_positive = tf.where(tf.less(self.max_num_positive, true_num_positive),
-                                self.max_num_positive,
-                                true_num_positive)
-        positive_indices = tf.random_shuffle(positive_indices)
-        positive_indices = tf.slice(positive_indices,
-                                    begin=[0],
-                                    size=[num_positive])
+            positive_indices = tf.reshape(tf.where(tf.equal(object_mask, 1)), [-1])
+            true_num_positive = tf.shape(positive_indices)[0]
+            num_positive = tf.where(tf.less(self.max_num_positive, true_num_positive),
+                                    self.max_num_positive,
+                                    true_num_positive)
+            positive_indices = tf.random_shuffle(positive_indices)
+            positive_indices = tf.slice(positive_indices,
+                                        begin=[0],
+                                        size=[num_positive])
 
-        num_negative = tf.cast(self.fast_rcnn_minibatch_size - num_positive, tf.int32)
-        negative_indices = tf.reshape(tf.where(tf.equal(object_mask, 0)), [-1])
-        negative_indices = tf.random_shuffle(negative_indices)
-        negative_indices = tf.slice(negative_indices,
-                                    begin=[0],
-                                    size=[num_negative])
-        minibatch_indices = tf.cast(
-            tf.random_shuffle(tf.concat([positive_indices, negative_indices], axis=0)),
-            tf.int32)
+            num_negative = tf.cast(self.fast_rcnn_minibatch_size - num_positive, tf.int32)
+            negative_indices = tf.reshape(tf.where(tf.equal(object_mask, 0)), [-1])
+            negative_indices = tf.random_shuffle(negative_indices)
+            negative_indices = tf.slice(negative_indices,
+                                        begin=[0],
+                                        size=[num_negative])
+            minibatch_indices = tf.cast(
+                tf.random_shuffle(tf.concat([positive_indices, negative_indices], axis=0)),
+                tf.int32)
 
-        minibatch_matched_boxes = tf.gather(proposal_matched_boxes, minibatch_indices)
-        minibatch_matched_label = tf.gather(proposal_matched_label, minibatch_indices)
+            minibatch_matched_boxes = tf.gather(proposal_matched_boxes, minibatch_indices)
+            minibatch_matched_label = tf.gather(proposal_matched_label, minibatch_indices)
 
-        minibatch_object_mask = tf.gather(object_mask, minibatch_indices)
-        minibatch_matched_onehot_label = tf.one_hot(minibatch_matched_label, depth=self.num_cls+1)
+            minibatch_object_mask = tf.gather(object_mask, minibatch_indices)
+            minibatch_matched_onehot_label = tf.one_hot(minibatch_matched_label, depth=self.num_cls+1)
 
-        # check this function's return
-        tf.summary.tensor_summary('minibatch_indices', minibatch_indices)
-        tf.summary.tensor_summary('minibatch_matched_boxes', minibatch_matched_boxes)
-        tf.summary.tensor_summary('minibatch_matched_onehot_label', minibatch_matched_onehot_label)
-        tf.summary.tensor_summary('minibatch_object_mask', minibatch_object_mask)
+            # check this function's return
+            # tf.summary.tensor_summary('minibatch_indices', minibatch_indices)
+            # tf.summary.tensor_summary('minibatch_matched_boxes', minibatch_matched_boxes)
+            # tf.summary.tensor_summary('minibatch_matched_onehot_label', minibatch_matched_onehot_label)
+            # tf.summary.tensor_summary('minibatch_object_mask', minibatch_object_mask)
 
         return minibatch_indices, minibatch_matched_boxes, minibatch_matched_onehot_label, minibatch_object_mask
 
@@ -331,30 +364,31 @@ class FastRcnn(object):
         :param
         :return:
         '''
-        gt_boxes = tf.cast(self.gtboxes_and_label[:, :4], tf.float32)
-        gt_label = self.gtboxes_and_label[:, -1]
+        with tf.variable_scope('match_predict_and_gtboxes'):
+            gt_boxes = tf.cast(self.gtboxes_and_label[:, :4], tf.float32)
+            gt_label = self.gtboxes_and_label[:, -1]
 
-        iou_proposal_gtboxes = calculate_iou(self.rpn_proposal_boxes, gt_boxes)
+            iou_proposal_gtboxes = calculate_iou(self.rpn_proposal_boxes, gt_boxes)
 
-        #
-        max_iou_per_proposal = tf.reduce_max(iou_proposal_gtboxes, axis=1)
+            #
+            max_iou_per_proposal = tf.reduce_max(iou_proposal_gtboxes, axis=1)
 
-        match_indices = tf.cast(tf.argmax(iou_proposal_gtboxes, axis=1), tf.int32)
+            match_indices = tf.cast(tf.argmax(iou_proposal_gtboxes, axis=1), tf.int32)
 
-        # [2000, 4]
-        proposal_matched_boxes = tf.gather(gt_boxes, match_indices)
+            # [2000, 4]
+            proposal_matched_boxes = tf.gather(gt_boxes, match_indices)
 
-        positive_mask = tf.greater(max_iou_per_proposal, self.fast_rcnn_positive_threshold_iou)
-        object_mask = tf.cast(positive_mask, tf.int32)
+            positive_mask = tf.greater(max_iou_per_proposal, self.fast_rcnn_positive_threshold_iou)
+            object_mask = tf.cast(positive_mask, tf.int32)
 
-        # make negative sample's cls label to background
-        proposal_matched_label = tf.gather(gt_label, match_indices)
-        proposal_matched_label = proposal_matched_label * object_mask
+            # make negative sample's cls label to background
+            proposal_matched_label = tf.gather(gt_label, match_indices)
+            proposal_matched_label = proposal_matched_label * object_mask
 
-        # check those return
-        # tf.summary.tensor_summary('proposal_matched_boxes', proposal_matched_boxes)
-        # tf.summary.tensor_summary('proposal_matched_label', proposal_matched_label)
-        # tf.summary.tensor_summary('object_mask', object_mask)
-        tf.summary.tensor_summary('max_iou_per_proposal', max_iou_per_proposal)
+            # check those return
+            # tf.summary.tensor_summary('proposal_matched_boxes', proposal_matched_boxes)
+            # tf.summary.tensor_summary('proposal_matched_label', proposal_matched_label)
+            # tf.summary.tensor_summary('object_mask', object_mask)
+            # tf.summary.tensor_summary('max_iou_per_proposal', max_iou_per_proposal)
 
         return proposal_matched_boxes, proposal_matched_label, object_mask
