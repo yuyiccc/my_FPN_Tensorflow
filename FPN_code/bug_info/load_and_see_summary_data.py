@@ -17,7 +17,10 @@ def load_and_see_tensor(summary_path, tag_name):
     for e in tf.train.summary_iterator(summary_path):
         for v in e.summary.value:
             if v.tag in tag_name:
-                fb = np.frombuffer(v.tensor.tensor_content, dtype=np.float32)
+                if v.tensor.dtype == 1:
+                    fb = np.frombuffer(v.tensor.tensor_content, dtype=np.float32)
+                else:
+                    fb = np.frombuffer(v.tensor.tensor_content, dtype=np.int32)
                 shape = []
                 for d in v.tensor.tensor_shape.dim:
                     shape.append(d.size)
@@ -52,6 +55,10 @@ if __name__ == '__main__':
     elif summary_name == 'resnet_v1_50_pascal_debug_fast_rcnn_match_proposal_function':
         summary_path = find_file(summary_path)
         tag_name = ['proposal_matched_boxes', 'proposal_matched_label', 'object_mask', 'max_iou_per_proposal']
+        load_and_see_tensor(summary_path, tag_name)
+    elif summary_name == 'resnet_v1_50_pascal_debug_fast_rcnn_minibatch_function':
+        summary_path = find_file(summary_path)
+        tag_name = ['minibatch_indices', 'minibatch_matched_boxes', 'minibatch_matched_label', 'max_iou_per_proposal']
         load_and_see_tensor(summary_path, tag_name)
     else:
         print('tensor name not included!!!')

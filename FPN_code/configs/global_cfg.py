@@ -19,7 +19,7 @@ DATASET_NAME = 'pascal'
 # network name
 NETWORK_NAME = 'resnet_v1_50'
 # version
-VERSION = 'debug_fast_rcnn_match_proposal_function'
+VERSION = 'debug_fast_rcnn_minibatch_function'
 # summary path
 SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
 # backbone network pretrain path
@@ -90,13 +90,18 @@ ROI_POOLING_KERNEL_SIZE = 2
 # fast rcnn weights decay
 FAST_RCNN_WEIGHTS_DECAY = 1e-4
 # fast_rcnn_nms_iou_threshold
-FAST_RCNN_NMS_IOU_THRESHOLD = 0.5
+FAST_RCNN_NMS_IOU_THRESHOLD = 0.2
 # max_num_per_class
 MAX_NUM_PER_CLASS = 100
 # fast_rcnn_score_threshold
 FAST_RCNN_SCORE_THRESHOLD = 0.5
 # fast_rcnn_positive_threshold_iou
 FAST_RCNN_POSITIVE_THRESHOLD_IOU = 0.5
+# fast_rcnn_minibatch_size
+FAST_RCNN_MINIBATCH_SIZE = 256
+# fast_rcnn_positive_ratio
+FAST_RCNN_POSITIVE_RATIO = 0.25
+
 
 if __name__ == '__main__':
     # test this cfg.py

@@ -9,6 +9,7 @@ from libs.box_utils.encode_and_decode import encode_boxes,decode_boxes
 from libs.box_utils import boxes_utils
 from libs.box_utils.iou import calculate_iou
 
+
 class FastRcnn(object):
     def __init__(self,
                  img_batch,
@@ -26,7 +27,9 @@ class FastRcnn(object):
                  fast_rcnn_nms_iou_threshold,
                  max_num_per_class,
                  fast_rcnn_score_threshold,
-                 fast_rcnn_positive_threshold_iou
+                 fast_rcnn_positive_threshold_iou,
+                 fast_rcnn_minibatch_size,
+                 fast_rcnn_positive_ratio
                  ):
         '''
         :param img_batch: [1,h,w,3]
@@ -45,6 +48,8 @@ class FastRcnn(object):
         :param max_num_per_class: int type
         :param fast_rcnn_score_threshold: float type, thresh the low score boxes
         :param fast_rcnn_positive_threshold_iou  :proposal which greater this threshold is a positive sample
+        :param fast_rcnn_minibatch_size
+        :param fast_rcnn_positive_ratio
         '''
         self.img_batch = img_batch
         self.img_shape = tf.shape(img_batch)
@@ -65,6 +70,9 @@ class FastRcnn(object):
         self.max_num_per_class = max_num_per_class
         self.fast_rcnn_score_threshold = fast_rcnn_score_threshold
         self.fast_rcnn_positive_threshold_iou = fast_rcnn_positive_threshold_iou
+        self.fast_rcnn_minibatch_size = fast_rcnn_minibatch_size
+        self.fast_rcnn_positive_ratio = fast_rcnn_positive_ratio
+        self.max_num_positive = tf.cast(self.fast_rcnn_minibatch_size * self.fast_rcnn_positive_ratio, tf.int32)
 
         self.rois_feature, self.rois_boxes = self.get_rois()
         self.fast_rcnn_cls_scores, self.fast_rcnn_encode_boxes = self.fast_rcnn_net()
@@ -281,7 +289,35 @@ class FastRcnn(object):
         proposal_matched_boxes, proposal_matched_label, object_mask = \
             self.match_predict_and_gtboxes()
 
-        pass
+        positive_indices = tf.reshape(tf.where(tf.equal(object_mask, 1)), [-1])
+        true_num_positive = tf.shape(positive_indices)[0]
+        num_positive = tf.where(tf.less(self.max_num_positive, true_num_positive),
+                                self.max_num_positive,
+                                true_num_positive)
+        positive_indices = tf.random_shuffle(positive_indices)
+        positive_indices = tf.slice(positive_indices,
+                                    begin=[0],
+                                    size=[num_positive])
+
+        num_negative = tf.cast(self.fast_rcnn_minibatch_size - num_positive, tf.int32)
+        negative_indices = tf.reshape(tf.where(tf.equal(object_mask, 0)), [-1])
+        negative_indices = tf.random_shuffle(negative_indices)
+        negative_indices = tf.slice(negative_indices,
+                                    begin=[0],
+                                    size=[num_negative])
+        minibatch_indices = tf.cast(
+            tf.random_shuffle(tf.concat([positive_indices, negative_indices], axis=0)),
+            tf.int32)
+
+        minibatch_matched_boxes = tf.gather(proposal_matched_boxes, minibatch_indices)
+        minibatch_matched_label = tf.gather(proposal_matched_label, minibatch_indices)
+
+        # check this function's return
+        tf.summary.tensor_summary('minibatch_indices', minibatch_indices)
+        tf.summary.tensor_summary('minibatch_matched_boxes', minibatch_matched_boxes)
+        tf.summary.tensor_summary('minibatch_matched_label', minibatch_matched_label)
+
+        return minibatch_indices, minibatch_matched_boxes, minibatch_matched_label
 
     def match_predict_and_gtboxes(self):
         '''
@@ -290,9 +326,6 @@ class FastRcnn(object):
         '''
         gt_boxes = tf.cast(self.gtboxes_and_label[:, :4], tf.float32)
         gt_label = self.gtboxes_and_label[:, -1]
-        # tf.summary.tensor_summary('gt_boxes', gt_boxes)
-        # tf.summary.tensor_summary('gt_label', gt_label)
-        # tf.summary.tensor_summary('gtboxes_and_label', self.gtboxes_and_label)
 
         iou_proposal_gtboxes = calculate_iou(self.rpn_proposal_boxes, gt_boxes)
 
@@ -300,9 +333,7 @@ class FastRcnn(object):
         max_iou_per_proposal = tf.reduce_max(iou_proposal_gtboxes, axis=1)
 
         match_indices = tf.cast(tf.argmax(iou_proposal_gtboxes, axis=1), tf.int32)
-        # tf.summary.tensor_summary('iou_proposal_gtboxes', iou_proposal_gtboxes)
-        # tf.summary.tensor_summary('max_iou_per_proposal', max_iou_per_proposal)
-        # tf.summary.tensor_summary('match_indices', match_indices)
+
         # [2000, 4]
         proposal_matched_boxes = tf.gather(gt_boxes, match_indices)
 
@@ -317,6 +348,6 @@ class FastRcnn(object):
         # tf.summary.tensor_summary('proposal_matched_boxes', proposal_matched_boxes)
         # tf.summary.tensor_summary('proposal_matched_label', proposal_matched_label)
         # tf.summary.tensor_summary('object_mask', object_mask)
-        # tf.summary.tensor_summary('max_iou_per_proposal', max_iou_per_proposal)
+        tf.summary.tensor_summary('max_iou_per_proposal', max_iou_per_proposal)
 
         return proposal_matched_boxes, proposal_matched_label, object_mask

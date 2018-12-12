@@ -112,7 +112,9 @@ def train():
                                              fast_rcnn_nms_iou_threshold=cfg.FAST_RCNN_NMS_IOU_THRESHOLD,
                                              max_num_per_class=cfg.MAX_NUM_PER_CLASS,
                                              fast_rcnn_score_threshold=cfg.FAST_RCNN_SCORE_THRESHOLD,
-                                             fast_rcnn_positive_threshold_iou=cfg.FAST_RCNN_POSITIVE_THRESHOLD_IOU
+                                             fast_rcnn_positive_threshold_iou=cfg.FAST_RCNN_POSITIVE_THRESHOLD_IOU,
+                                             fast_rcnn_minibatch_size=cfg.FAST_RCNN_MINIBATCH_SIZE,
+                                             fast_rcnn_positive_ratio=cfg.FAST_RCNN_POSITIVE_RATIO
                                              )
         fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object = \
             fast_rcnn.fast_rcnn_prediction()
