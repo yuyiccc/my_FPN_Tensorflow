@@ -17,6 +17,9 @@ def l1_smooth_losses(predict_boxes,
     '''
 
     diff = tf.cast(tf.abs(predict_boxes-gtboxes), dtype=tf.float32)
+    object_weights = tf.cast(object_weights, dtype=tf.float32)
+    if classes_weights is not None:
+        classes_weights = tf.cast(classes_weights, dtype=tf.float32)
 
     if classes_weights is None:
         boxes_smooth_l1_losses = tf.reduce_sum(
@@ -30,7 +33,10 @@ def l1_smooth_losses(predict_boxes,
         )*object_weights
 
     num_object = tf.shape(tf.where(tf.equal(object_weights, 1)))[0]
-    losses = tf.reduce_sum(boxes_smooth_l1_losses, axis=0)/tf.cast(num_object, tf.float32)
+    losses = tf.cond(tf.equal(num_object, 0),
+                     lambda: tf.constant(0, dtype=tf.float32),
+                     lambda: tf.reduce_sum(boxes_smooth_l1_losses, axis=0)/tf.cast(num_object, tf.float32)
+                     )
 
     return losses
 

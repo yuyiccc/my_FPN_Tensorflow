@@ -14,6 +14,7 @@ summary_name = cfg.SUMMARY_PATH.split('\\')[-1]
 
 
 def load_and_see_tensor(summary_path, tag_name):
+    tensor_dict = {}
     for e in tf.train.summary_iterator(summary_path):
         for v in e.summary.value:
             if v.tag in tag_name:
@@ -25,6 +26,7 @@ def load_and_see_tensor(summary_path, tag_name):
                 for d in v.tensor.tensor_shape.dim:
                     shape.append(d.size)
                 fb = fb.reshape(shape)
+                tensor_dict[v.tag] = fb
                 print(v.tag)
                 print(fb)
 
@@ -63,6 +65,13 @@ if __name__ == '__main__':
                     'minibatch_matched_onehot_label',
                     'max_iou_per_proposal',
                     'minibatch_object_mask']
+        load_and_see_tensor(summary_path, tag_name)
+    elif summary_name == 'resnet_v1_50_pascal_debug_fast_rcnn_loss_function':
+        summary_path = find_file(summary_path)
+        tag_name = ['fast_rcnn_loss/minibatch_predict_encode_boxes',
+                    'fast_rcnn_loss/minibatch_encode_gtboxes',
+                    'fast_rcnn_loss/minibatch_object_mask',
+                    'fast_rcnn_loss/class_weight_mask']
         load_and_see_tensor(summary_path, tag_name)
     else:
         print('tensor name not included!!!')

@@ -19,7 +19,7 @@ DATASET_NAME = 'pascal'
 # network name
 NETWORK_NAME = 'resnet_v1_50'
 # version
-VERSION = 'debug_fast_rcnn_minibatch_function'
+VERSION = 'debug_fast_rcnn_loss_function'
 # summary path
 SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
 # backbone network pretrain path

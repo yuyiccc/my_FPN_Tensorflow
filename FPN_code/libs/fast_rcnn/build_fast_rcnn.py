@@ -5,10 +5,11 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 import sys
 sys.path.append('../../')
-from libs.box_utils.encode_and_decode import encode_boxes,decode_boxes
+from libs.box_utils.encode_and_decode import encode_boxes, decode_boxes
 from libs.box_utils import boxes_utils
 from libs.box_utils.iou import calculate_iou
 from libs.losses import losses
+from libs.box_utils.show_boxes import draw_box_with_tensor
 
 class FastRcnn(object):
     def __init__(self,
@@ -286,8 +287,8 @@ class FastRcnn(object):
             minibatch_indices, minibatch_gtboxes, minibatch_onehot_label, minibatch_object_mask = self.make_minibatch()
 
             minibatch_proposal_boxes = tf.gather(self.rpn_proposal_boxes, minibatch_indices)
-            minibatch_predict_scores = tf.gather(self.fast_rcnn_encode_boxes, minibatch_indices)
-            minibatch_predict_encode_boxes = tf.gather(self.fast_rcnn_cls_scores)
+            minibatch_predict_scores = tf.gather(self.fast_rcnn_cls_scores, minibatch_indices)
+            minibatch_predict_encode_boxes = tf.gather(self.fast_rcnn_encode_boxes, minibatch_indices)
 
             # encode minibatch_gtboxes
             minibatch_encode_gtboxes = encode_boxes(anchors=minibatch_proposal_boxes,
@@ -302,21 +303,44 @@ class FastRcnn(object):
             category_list = tf.unstack(minibatch_onehot_label, axis=1)
             for i in range(1, self.num_cls+1):
                 class_weight = tf.ones([self.fast_rcnn_minibatch_size, 4], dtype=tf.float32)
-                class_weight = class_weight * tf.expand_dims(category_list, axis=1)
+                class_weight = class_weight * tf.expand_dims(category_list[i], axis=1)
                 class_weight_mask_list.append(class_weight)
 
             class_weight_mask = tf.concat(class_weight_mask_list, axis=1)
 
             # cls loss
-            fast_rcnn_cls_loss = slim.losses.softmax_cross_entropy(logits=minibatch_predict_scores,
-                                                                   onehot_labels=minibatch_onehot_label)
+            with tf.variable_scope('fast_rcnn_cls_losses'):
+                fast_rcnn_cls_loss = slim.losses.softmax_cross_entropy(logits=minibatch_predict_scores,
+                                                                       onehot_labels=minibatch_onehot_label)
 
             # boxes loss
-            fast_rcnn_boxes_loss = losses.l1_smooth_losses(predict_boxes=minibatch_predict_encode_boxes,
-                                                           gtboxes=minibatch_encode_gtboxes,
-                                                           object_weights=minibatch_object_mask,
-                                                           classes_weights=class_weight_mask)
+            with tf.variable_scope('fast_rcnn_boxes_losses'):
+                fast_rcnn_boxes_loss = losses.l1_smooth_losses(predict_boxes=minibatch_predict_encode_boxes,
+                                                               gtboxes=minibatch_encode_gtboxes,
+                                                               object_weights=minibatch_object_mask,
+                                                               classes_weights=class_weight_mask)
+                slim.losses.add_loss(fast_rcnn_boxes_loss)
             # check loss and decode boxes
+            # summary positive proposals and negative proposals
+            minibatch_positive_proposals = \
+                draw_box_with_tensor(img_batch=self.img_batch,
+                                     boxes=minibatch_proposal_boxes*tf.expand_dims(tf.cast(minibatch_object_mask,
+                                                                                           tf.float32),
+                                                                                   1),
+                                     text=tf.shape(tf.where(tf.equal(minibatch_object_mask, 1)))[0])
+
+            minibatch_negative_mask = tf.cast(tf.logical_not(tf.cast(minibatch_object_mask, tf.bool)), tf.float32)
+            minibatch_negative_proposals = \
+                draw_box_with_tensor(img_batch=self.img_batch,
+                                     boxes=minibatch_proposal_boxes * tf.expand_dims(minibatch_negative_mask, 1),
+                                     text=tf.shape(tf.where(tf.equal(minibatch_negative_mask, 1)))[0])
+            tf.summary.image('minibatch_positive_proposals', minibatch_positive_proposals)
+            tf.summary.image('minibatch_negative_proposal', minibatch_negative_proposals)
+            # check the cls tensor part
+            tf.summary.tensor_summary('minibatch_object_mask', minibatch_object_mask)
+            tf.summary.tensor_summary('class_weight_mask', class_weight_mask)
+            tf.summary.tensor_summary('minibatch_predict_encode_boxes', minibatch_predict_encode_boxes)
+            tf.summary.tensor_summary('minibatch_encode_gtboxes', minibatch_encode_gtboxes)
 
         return fast_rcnn_boxes_loss, fast_rcnn_cls_loss
 
