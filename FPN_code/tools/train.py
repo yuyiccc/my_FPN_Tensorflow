@@ -118,7 +118,7 @@ def train():
                                              )
         fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object = \
             fast_rcnn.fast_rcnn_prediction()
-        fast_rcnn_boxes_loss , fast_rcnn_cls_loss = fast_rcnn.fast_rcnn_loss()
+        fast_rcnn_boxes_loss, fast_rcnn_cls_loss = fast_rcnn.fast_rcnn_loss()
         fast_rcnn_prediction_in_image = draw_boxes_with_category(img_batch=img,
                                                                  boxes=fast_rcnn_decode_boxes,
                                                                  category=fast_rcnn_category,

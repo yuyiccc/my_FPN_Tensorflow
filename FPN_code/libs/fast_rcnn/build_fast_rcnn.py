@@ -337,10 +337,10 @@ class FastRcnn(object):
             tf.summary.image('minibatch_positive_proposals', minibatch_positive_proposals)
             tf.summary.image('minibatch_negative_proposal', minibatch_negative_proposals)
             # check the cls tensor part
-            tf.summary.tensor_summary('minibatch_object_mask', minibatch_object_mask)
-            tf.summary.tensor_summary('class_weight_mask', class_weight_mask)
-            tf.summary.tensor_summary('minibatch_predict_encode_boxes', minibatch_predict_encode_boxes)
-            tf.summary.tensor_summary('minibatch_encode_gtboxes', minibatch_encode_gtboxes)
+            # tf.summary.tensor_summary('minibatch_object_mask', minibatch_object_mask)
+            # tf.summary.tensor_summary('class_weight_mask', class_weight_mask)
+            # tf.summary.tensor_summary('minibatch_predict_encode_boxes', minibatch_predict_encode_boxes)
+            # tf.summary.tensor_summary('minibatch_encode_gtboxes', minibatch_encode_gtboxes)
 
         return fast_rcnn_boxes_loss, fast_rcnn_cls_loss
 
