@@ -8,11 +8,16 @@ import sys
 sys.path.append("../../")
 import configs.global_cfg as cfg
 from libs.label_name_dict import NUMBER_TO_LABEL
+from libs.box_utils.boxes_utils import clip_boxes_to_img_boundaries
 
 
 def draw_box_with_tensor(img_batch, boxes, text):
     # shape = tf.shape(img_batch)
     # boxes = boxes_utils.clip_boxes_to_img_boundaries(tf.cast(boxes, tf.float32), shape)
+    # if is_clip_the_boxes:
+    #     boxes = clip_boxes_to_img_boundaries(boxes, tf.shape(img_batch))
+    #     print('cliped boxes')
+    #     print(boxes)
 
     def draw_box_cv(img, boxes, text):
         img = img + np.array([103.939, 116.779, 123.68])

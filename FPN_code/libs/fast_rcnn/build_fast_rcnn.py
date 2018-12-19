@@ -11,6 +11,7 @@ from libs.box_utils.iou import calculate_iou
 from libs.losses import losses
 from libs.box_utils.show_boxes import draw_box_with_tensor
 
+
 class FastRcnn(object):
     def __init__(self,
                  img_batch,
@@ -90,7 +91,7 @@ class FastRcnn(object):
                 tf.where(
                     tf.not_equal(
                         tf.reduce_sum(
-                            tf.cast(tf.equal(boxes, 0), tf.int32),
+                            tf.cast(tf.equal(boxes, 0.), tf.int32),
                             axis=1),
                         4)),
                 [-1])
@@ -124,7 +125,8 @@ class FastRcnn(object):
 
                 level_i_cropped_rois = tf.image.crop_and_resize(level_i_feature,
                                                                 boxes=tf.transpose(tf.stack([ymin, xmin, ymax, xmax])),
-                                                                box_ind=tf.zeros_like(level_i_indices, dtype=tf.int32),
+                                                                box_ind=tf.zeros(tf.shape(level_i_boxes)[0],
+                                                                                 dtype=tf.int32),
                                                                 crop_size=[self.crop_size]*2)
 
                 level_i_rois_feature = slim.max_pool2d(level_i_cropped_rois,
@@ -286,7 +288,7 @@ class FastRcnn(object):
         with tf.variable_scope('fast_rcnn_loss'):
             minibatch_indices, minibatch_gtboxes, minibatch_onehot_label, minibatch_object_mask = self.make_minibatch()
 
-            minibatch_proposal_boxes = tf.gather(self.rpn_proposal_boxes, minibatch_indices)
+            minibatch_proposal_boxes = tf.gather(self.rois_boxes, minibatch_indices)
             minibatch_predict_scores = tf.gather(self.fast_rcnn_cls_scores, minibatch_indices)
             minibatch_predict_encode_boxes = tf.gather(self.fast_rcnn_encode_boxes, minibatch_indices)
 
@@ -322,25 +324,32 @@ class FastRcnn(object):
                 slim.losses.add_loss(fast_rcnn_boxes_loss)
             # check loss and decode boxes
             # summary positive proposals and negative proposals
+            minibatch_proposal_boxes = boxes_utils.clip_boxes_to_img_boundaries(minibatch_proposal_boxes,
+                                                                                self.img_shape)
             minibatch_positive_proposals = \
                 draw_box_with_tensor(img_batch=self.img_batch,
                                      boxes=minibatch_proposal_boxes*tf.expand_dims(tf.cast(minibatch_object_mask,
                                                                                            tf.float32),
                                                                                    1),
-                                     text=tf.shape(tf.where(tf.equal(minibatch_object_mask, 1)))[0])
+                                     text=tf.shape(tf.where(tf.equal(minibatch_object_mask, 1)))[0]
+                                     )
 
             minibatch_negative_mask = tf.cast(tf.logical_not(tf.cast(minibatch_object_mask, tf.bool)), tf.float32)
             minibatch_negative_proposals = \
                 draw_box_with_tensor(img_batch=self.img_batch,
                                      boxes=minibatch_proposal_boxes * tf.expand_dims(minibatch_negative_mask, 1),
-                                     text=tf.shape(tf.where(tf.equal(minibatch_negative_mask, 1)))[0])
+                                     text=tf.shape(tf.where(tf.equal(minibatch_negative_mask, 1)))[0]
+                                     )
             tf.summary.image('minibatch_positive_proposals', minibatch_positive_proposals)
             tf.summary.image('minibatch_negative_proposal', minibatch_negative_proposals)
             # check the cls tensor part
-            # tf.summary.tensor_summary('minibatch_object_mask', minibatch_object_mask)
-            # tf.summary.tensor_summary('class_weight_mask', class_weight_mask)
-            # tf.summary.tensor_summary('minibatch_predict_encode_boxes', minibatch_predict_encode_boxes)
-            # tf.summary.tensor_summary('minibatch_encode_gtboxes', minibatch_encode_gtboxes)
+            tf.summary.tensor_summary('minibatch_object_mask', minibatch_object_mask)
+            tf.summary.tensor_summary('class_weight_mask', class_weight_mask)
+            tf.summary.tensor_summary('minibatch_predict_encode_boxes', minibatch_predict_encode_boxes)
+            tf.summary.tensor_summary('minibatch_encode_gtboxes', minibatch_encode_gtboxes)
+            tf.summary.tensor_summary('location_loss', fast_rcnn_boxes_loss)
+            tf.summary.tensor_summary('logits', minibatch_predict_scores)
+            tf.summary.tensor_summary('one_hot', minibatch_onehot_label)
 
         return fast_rcnn_boxes_loss, fast_rcnn_cls_loss
 
@@ -392,7 +401,7 @@ class FastRcnn(object):
             gt_boxes = tf.cast(self.gtboxes_and_label[:, :4], tf.float32)
             gt_label = self.gtboxes_and_label[:, -1]
 
-            iou_proposal_gtboxes = calculate_iou(self.rpn_proposal_boxes, gt_boxes)
+            iou_proposal_gtboxes = calculate_iou(self.rois_boxes, gt_boxes)
 
             #
             max_iou_per_proposal = tf.reduce_max(iou_proposal_gtboxes, axis=1)

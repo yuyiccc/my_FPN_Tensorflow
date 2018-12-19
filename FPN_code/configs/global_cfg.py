@@ -19,11 +19,15 @@ DATASET_NAME = 'pascal'
 # network name
 NETWORK_NAME = 'resnet_v1_50'
 # version
-VERSION = 'debug_fast_rcnn_loss_function'
+VERSION = 'debug_train_op'
+# experiment_file_name
+EX_FILE_NAME = '%s_%s_%s' % (NETWORK_NAME, DATASET_NAME, VERSION)
 # summary path
-SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', '%s_%s_%s'%(NETWORK_NAME, DATASET_NAME, VERSION))
+SUMMARY_PATH = os.path.join(OUTER_PATH, 'output', 'summary', EX_FILE_NAME)
 # backbone network pretrain path
 PRETRAIN_PATH = os.path.join(OUTER_PATH, 'pretrained_weight', NETWORK_NAME, NETWORK_NAME + '.ckpt')
+# ckpt path
+CKPT_PATH = os.path.join(OUTER_PATH, 'output', 'trained_weight', EX_FILE_NAME)
 
 
 ##########################
@@ -53,7 +57,7 @@ ANCHOR_SCALES = [1]
 # anchor ratios
 ANCHOR_RATIOS = [1, 2, 0.5]
 # scale_factor
-SCALE_FACTOR = [1, 1, 1, 1]
+SCALE_FACTOR = [10, 10, 5, 5]
 # base_anchor_size_list
 BASE_ANCHOR_SIZE_LIST = [32, 64, 128, 256, 512]
 # stride
@@ -101,6 +105,15 @@ FAST_RCNN_POSITIVE_THRESHOLD_IOU = 0.5
 FAST_RCNN_MINIBATCH_SIZE = 256
 # fast_rcnn_positive_ratio
 FAST_RCNN_POSITIVE_RATIO = 0.25
+
+# -------training parameter----------
+
+# base_learning_rate
+BASE_LEARNING_RATE = 0.02
+# momentum
+MOMENTUM = 0.9
+# loss_weight [rpn_cls_loss_weight, rpn_location_loss_weight, fast_rcnn_cls_loss_weight, fast_rcnn_location_weight]
+LOSS_WEIGHT = [1., 1., 1., 1.]
 
 
 if __name__ == '__main__':

@@ -287,10 +287,14 @@ class RPN(object):
             minibatch_decode_anchors = encode_and_decode.decode_boxes(encode_boxes=minibatch_rpn_encode_boxes,
                                                                       reference_boxes=minibatch_anchors,
                                                                       scale_factors=self.scale_factors)
+            # clip boxes into image shape
+            minibatch_decode_anchors = boxes_utils.clip_boxes_to_img_boundaries(minibatch_decode_anchors,
+                                                                                tf.shape(self.img_batch))
             positive_decode_anchor_in_img = \
                 draw_box_with_tensor(img_batch=self.img_batch,
                                      boxes=minibatch_decode_anchors*tf.expand_dims(object_mask, 1),
-                                     text=tf.shape(tf.where(tf.equal(object_mask, 1)))[0])
+                                     text=tf.shape(tf.where(tf.equal(object_mask, 1)))[0]
+                                     )
 
             tf.summary.image('images/rpn/losses/anchors_positive_minibatch', positive_anchors_in_img)
             tf.summary.image('images/rpn/losses/anchors_negative_minibatch', negative_anchors_in_img)
@@ -298,13 +302,14 @@ class RPN(object):
 
             # losses
             with tf.variable_scope('rpn_localization_losses'):
+                classify_loss = slim.losses.softmax_cross_entropy(logits=minibatch_rpn_scores,
+                                                                  onehot_labels=minibatch_label_onehot)
+
                 location_loss = losses.l1_smooth_losses(predict_boxes=minibatch_rpn_encode_boxes,
                                                         gtboxes=minibatch_encode_boxes_label,
                                                         object_weights=object_mask)
                 slim.losses.add_loss(location_loss)  # add location loss to losses collections
 
-                classify_loss = slim.losses.softmax_cross_entropy(logits=minibatch_rpn_scores,
-                                                                  onehot_labels=minibatch_label_onehot)
             return location_loss, classify_loss
 
     def make_minibatch(self):
@@ -328,7 +333,7 @@ class RPN(object):
             minibatch_indices = tf.concat([positive_indices, negative_indices], axis=0)
             minibatch_indices = tf.random_shuffle(minibatch_indices)
 
-            minibatch_anchor_matched_gtboxes  = tf.gather(anchor_matched_gtboxes, minibatch_indices)
+            minibatch_anchor_matched_gtboxes = tf.gather(anchor_matched_gtboxes, minibatch_indices)
             object_mask = tf.gather(object_mask, minibatch_indices)
             label = tf.cast(tf.gather(label, minibatch_indices), dtype=tf.int32)
             onehot_label = tf.one_hot(label, depth=2)

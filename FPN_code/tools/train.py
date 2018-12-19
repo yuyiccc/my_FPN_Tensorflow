@@ -4,8 +4,10 @@
 
 import tensorflow as tf
 import sys
+import os
 sys.path.append("../")
 from data.IO.read_tfrecord import Read_tfrecord
+from libs.box_utils.boxes_utils import  clip_boxes_to_img_boundaries
 from libs.box_utils.show_boxes import draw_box_with_tensor, draw_boxes_with_category
 import configs.global_cfg as cfg
 from  tools.assist_tools import ShowProcess, check_and_create_paths
@@ -14,7 +16,7 @@ from libs.rpn import build_rpn, debug_rpn
 from libs.fast_rcnn import build_fast_rcnn
 from  tools.restore_model import get_restorer
 import tensorflow.contrib.slim as slim
-
+import time
 
 
 
@@ -88,11 +90,13 @@ def train():
                                          indices=rpn_object_indices)
             rpn_object_boxes_in_img = draw_box_with_tensor(img_batch=img,
                                                            boxes=rpn_object_boxes,
-                                                           text='rpn_object_boxes')
-
+                                                           text=tf.shape(rpn_object_boxes)[0])
+            clip_rpn_proposals_boxes = clip_boxes_to_img_boundaries(rpn_proposals_boxes,
+                                                                    tf.shape(img))
             rpn_proposals_boxes_in_img = draw_box_with_tensor(img_batch=img,
-                                                              boxes=rpn_proposals_boxes,
-                                                              text=tf.shape(rpn_proposals_boxes)[0])
+                                                              boxes=clip_rpn_proposals_boxes,
+                                                              text=tf.shape(rpn_proposals_boxes)[0]
+                                                              )
 
         #############
         # fast-rcnn #
@@ -119,11 +123,41 @@ def train():
         fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object = \
             fast_rcnn.fast_rcnn_prediction()
         fast_rcnn_boxes_loss, fast_rcnn_cls_loss = fast_rcnn.fast_rcnn_loss()
-        fast_rcnn_prediction_in_image = draw_boxes_with_category(img_batch=img,
-                                                                 boxes=fast_rcnn_decode_boxes,
-                                                                 category=fast_rcnn_category,
-                                                                 scores=fast_rcnn_scores)
+        fast_rcnn_total_loss = fast_rcnn_boxes_loss + fast_rcnn_cls_loss
 
+        with tf.name_scope('fast_rcnn_prediction_boxes'):
+            fast_rcnn_prediction_in_image = draw_boxes_with_category(img_batch=img,
+                                                                     boxes=fast_rcnn_decode_boxes,
+                                                                     category=fast_rcnn_category,
+                                                                     scores=fast_rcnn_scores)
+
+        #####################
+        # optimization part #
+        #####################
+        # global_step = tf.train.get_or_create_global_step()
+        # total_loss = slim.losses.get_losses()
+        # total_loss = tf.reduce_sum(total_loss * tf.constant(cfg.LOSS_WEIGHT, dtype=tf.float32))
+        #
+        # lr = tf.train.piecewise_constant(global_step,
+        #                                  [60000],
+        #                                  [cfg.BASE_LEARNING_RATE, cfg.BASE_LEARNING_RATE/10])
+        #
+        # optimizer = slim.train.MomentumOptimizer(learning_rate=lr,
+        #                                          momentum=cfg.MOMENTUM,)
+        #
+        # train_op = optimizer.minimize(total_loss, global_step)
+
+        global_step = tf.train.get_or_create_global_step()
+        total_loss = slim.losses.get_total_loss()
+
+        lr = tf.train.piecewise_constant(global_step,
+                                         [60000],
+                                         [cfg.BASE_LEARNING_RATE, cfg.BASE_LEARNING_RATE/10])
+
+        optimizer = tf.train.MomentumOptimizer(learning_rate=lr,
+                                               momentum=cfg.MOMENTUM)
+
+        train_op = slim.learning.create_train_op(total_loss, optimizer, global_step)
         ###########
         # summary #
         ###########
@@ -136,7 +170,8 @@ def train():
 
         # rpn loss scale
         tf.summary.scalar('losses/rpn/location_loss', rpn_location_loss)
-        tf.summary.scalar('losses/rpn/classify_loss', rpn_classification_loss)
+        tf.summary.scalar('losses/rpn/cls_loss', rpn_classification_loss)
+        tf.summary.scalar('losses/rpn/total_loss', rpn_net_loss)
 
         # fast rcnn prediction boxes
         tf.summary.image('images/fast_rcnn/prediction_boxes', fast_rcnn_prediction_in_image)
@@ -144,6 +179,9 @@ def train():
         # fast loss part
         tf.summary.scalar('losses/fast_rcnn/location_loss', fast_rcnn_boxes_loss)
         tf.summary.scalar('losses/fast_rcnn/cls_loss', fast_rcnn_cls_loss)
+        tf.summary.scalar('losses/fast_rcnn/total_loss', fast_rcnn_total_loss)
+        tf.summary.scalar('losses/total_loss', total_loss)
+        tf.summary.scalar('learing_rate', lr)
 
         if debug:
             # bcckbone network
@@ -163,7 +201,6 @@ def train():
         summary_op = tf.summary.merge_all()
         summary_path = cfg.SUMMARY_PATH
         check_and_create_paths([summary_path])
-
         ################
         # session part #
         ################
@@ -180,25 +217,87 @@ def train():
             # initial part
             sess.run(init_op)
             sess.run(iterator.initializer)
+            summary_writer = tf.summary.FileWriter(summary_path, graph=sess.graph)
+            saver = tf.train.Saver()
             if checkpoint_path:
                 restorer.restore(sess, checkpoint_path)
                 print('restore is done!!!')
-            summary_writer = tf.summary.FileWriter(summary_path, graph=sess.graph)
+            step = 0
+            while True:
+                try:
+                    if step >= 1:
+                        break
+                    training_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+                    start_time = time.time()
+                    _global_step,\
+                        _img_name,\
+                        _rpn_location_loss,\
+                        _rpn_classification_loss,\
+                        _rpn_net_loss,\
+                        _fast_rcnn_boxes_loss,\
+                        _fast_rcnn_cls_loss,\
+                        _fast_rcnn_total_loss,\
+                        _total_loss,\
+                        _train_op,\
+                        summary_str\
+                        = sess.run([global_step,
+                                    img_name,
+                                    rpn_location_loss,
+                                    rpn_classification_loss,
+                                    rpn_net_loss,
+                                    fast_rcnn_boxes_loss,
+                                    fast_rcnn_cls_loss,
+                                    fast_rcnn_total_loss,
+                                    total_loss,
+                                    train_op,
+                                    summary_op])
+                    end_time = time.time()
 
-            summary_str = sess.run(summary_op)
-            summary_writer.add_summary(summary_str, 1)
-            summary_writer.flush()
+                    # print the result in screen
+                    if 1:  # step % 10 == 0:
+                        cost_time = end_time - start_time
+                        print("""-----time:%s---step:%d---image name:%s---cost_time:%.4fs-----\n
+                        total_loss:%.4f\n
+                        rpn_boxes_loss:%.4f         rpn_class_loss:%.4f         rpn_total_loss:%.4f\n
+                        fast_rcnn_boxes_loss:%.4f   fast_rcnn_class_loss:%.4f   fast_rcnn_total_loss:%4f"""
+                              % (training_time,
+                                 _global_step,
+                                 str(_img_name),
+                                 cost_time,
+                                 _total_loss,
+                                 _rpn_location_loss,
+                                 _rpn_classification_loss,
+                                 _rpn_net_loss,
+                                 _fast_rcnn_boxes_loss,
+                                 _fast_rcnn_cls_loss,
+                                 _fast_rcnn_total_loss)
+                              )
+                    # add summary
+                    if 1:  # step % 100 == 0:
+                        # summary_str = sess.run(summary_op)
+                        summary_writer.add_summary(summary_str, step)
+                        summary_writer.flush()
+                    # save ckpt
+                    if step % 10000 == 0 and step > 1:
+                        check_and_create_paths([cfg.CKPT_PATH])
+                        save_path = os.path.join(cfg.CKPT_PATH, 'model_weights')
+                        saver.save(sess, save_path, global_step)
+                    step += 1
+                    print(step)
+                except tf.errors.OutOfRangeError:
+                    break
+            summary_writer.close()
 
-
-def initial_part(iterator):
-    init_op = tf.group(
-        tf.local_variables_initializer(),
-        tf.global_variables_initializer()
-    )
-    sess = tf.InteractiveSession()
-    sess.run(init_op)
-    sess.run(iterator.initializer)
-    return sess
+# this function is for debug the function which using in trainning function
+# def initial_part(iterator):
+#     init_op = tf.group(
+#         tf.local_variables_initializer(),
+#         tf.global_variables_initializer()
+#     )
+#     sess = tf.InteractiveSession()
+#     sess.run(init_op)
+#     sess.run(iterator.initializer)
+#     return sess
 
 
 if __name__ == '__main__':

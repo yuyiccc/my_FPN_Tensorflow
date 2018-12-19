@@ -73,5 +73,9 @@ if __name__ == '__main__':
                     'fast_rcnn_loss/minibatch_object_mask',
                     'fast_rcnn_loss/class_weight_mask']
         load_and_see_tensor(summary_path, tag_name)
+    elif summary_name == 'resnet_v1_50_pascal_debug_train_op':
+        summary_path = find_file(summary_path)
+        tag_name = ['losses/total_loss']
+        load_and_see_tensor(summary_path, tag_name)
     else:
         print('tensor name not included!!!')
