@@ -9,8 +9,8 @@ def l1_smooth_losses(predict_boxes,
                      object_weights,
                      classes_weights=None):
     '''
-    :param predict_boxes: [N, 4]
-    :param gtboxes: [N, 4]
+    :param predict_boxes: [N, 4] or [N, 4*num_cls]
+    :param gtboxes: [N, 4] or [N, 4*num_cls]
     :param object_weights: [N,]
     :param classes_weights: [N, 4*num_cls]
     :return: 

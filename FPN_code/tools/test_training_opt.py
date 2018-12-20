@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Author:YuYi
-# Time :2018/11/19 20:05
+# Time :2018/12/19 17:09
 
 import tensorflow as tf
 import sys
@@ -17,8 +17,6 @@ from libs.fast_rcnn import build_fast_rcnn
 from  tools.restore_model import get_restorer
 import tensorflow.contrib.slim as slim
 import time
-
-
 
 debug = True
 
@@ -100,39 +98,39 @@ def train():
                                                               boxes=clip_rpn_proposals_boxes,
                                                               text=tf.shape(rpn_proposals_boxes)[0]
                                                               )
-
-        #############
-        # fast-rcnn #
-        #############
-        fast_rcnn = build_fast_rcnn.FastRcnn(img_batch=img,
-                                             feature_dict=rpn_net.feature_pyramid,
-                                             rpn_proposal_boxes=rpn_proposals_boxes,
-                                             rpn_proposal_scores=rpn_proposals_scores,
-                                             gtboxes_and_label=tf.squeeze(gtboxes_label, axis=0),
-                                             crop_size=cfg.CROP_SIZE,
-                                             roi_pooling_kernel_size=cfg.ROI_POOLING_KERNEL_SIZE,
-                                             levels=cfg.LEVEL,
-                                             is_training=True,
-                                             weights_regularizer=cfg.FAST_RCNN_WEIGHTS_DECAY,
-                                             num_cls=cfg.NUM_CLASSES,
-                                             scale_factors=cfg.SCALE_FACTOR,
-                                             fast_rcnn_nms_iou_threshold=cfg.FAST_RCNN_NMS_IOU_THRESHOLD,
-                                             max_num_per_class=cfg.MAX_NUM_PER_CLASS,
-                                             fast_rcnn_score_threshold=cfg.FAST_RCNN_SCORE_THRESHOLD,
-                                             fast_rcnn_positive_threshold_iou=cfg.FAST_RCNN_POSITIVE_THRESHOLD_IOU,
-                                             fast_rcnn_minibatch_size=cfg.FAST_RCNN_MINIBATCH_SIZE,
-                                             fast_rcnn_positive_ratio=cfg.FAST_RCNN_POSITIVE_RATIO
-                                             )
-        fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object = \
-            fast_rcnn.fast_rcnn_prediction()
-        fast_rcnn_boxes_loss, fast_rcnn_cls_loss = fast_rcnn.fast_rcnn_loss()
-        fast_rcnn_total_loss = fast_rcnn_boxes_loss + fast_rcnn_cls_loss
-
-        with tf.name_scope('fast_rcnn_prediction_boxes'):
-            fast_rcnn_prediction_in_image = draw_boxes_with_category(img_batch=img,
-                                                                     boxes=fast_rcnn_decode_boxes,
-                                                                     category=fast_rcnn_category,
-                                                                     scores=fast_rcnn_scores)
+        #
+        # #############
+        # # fast-rcnn #
+        # #############
+        # fast_rcnn = build_fast_rcnn.FastRcnn(img_batch=img,
+        #                                      feature_dict=rpn_net.feature_pyramid,
+        #                                      rpn_proposal_boxes=rpn_proposals_boxes,
+        #                                      rpn_proposal_scores=rpn_proposals_scores,
+        #                                      gtboxes_and_label=tf.squeeze(gtboxes_label, axis=0),
+        #                                      crop_size=cfg.CROP_SIZE,
+        #                                      roi_pooling_kernel_size=cfg.ROI_POOLING_KERNEL_SIZE,
+        #                                      levels=cfg.LEVEL,
+        #                                      is_training=True,
+        #                                      weights_regularizer=cfg.FAST_RCNN_WEIGHTS_DECAY,
+        #                                      num_cls=cfg.NUM_CLASSES,
+        #                                      scale_factors=cfg.SCALE_FACTOR,
+        #                                      fast_rcnn_nms_iou_threshold=cfg.FAST_RCNN_NMS_IOU_THRESHOLD,
+        #                                      max_num_per_class=cfg.MAX_NUM_PER_CLASS,
+        #                                      fast_rcnn_score_threshold=cfg.FAST_RCNN_SCORE_THRESHOLD,
+        #                                      fast_rcnn_positive_threshold_iou=cfg.FAST_RCNN_POSITIVE_THRESHOLD_IOU,
+        #                                      fast_rcnn_minibatch_size=cfg.FAST_RCNN_MINIBATCH_SIZE,
+        #                                      fast_rcnn_positive_ratio=cfg.FAST_RCNN_POSITIVE_RATIO
+        #                                      )
+        # fast_rcnn_decode_boxes, fast_rcnn_category, fast_rcnn_scores, num_object = \
+        #     fast_rcnn.fast_rcnn_prediction()
+        # fast_rcnn_boxes_loss, fast_rcnn_cls_loss = fast_rcnn.fast_rcnn_loss()
+        # fast_rcnn_total_loss = fast_rcnn_boxes_loss + fast_rcnn_cls_loss
+        #
+        # with tf.name_scope('fast_rcnn_prediction_boxes'):
+        #     fast_rcnn_prediction_in_image = draw_boxes_with_category(img_batch=img,
+        #                                                              boxes=fast_rcnn_decode_boxes,
+        #                                                              category=fast_rcnn_category,
+        #                                                              scores=fast_rcnn_scores)
 
         #####################
         # optimization part #
@@ -159,8 +157,8 @@ def train():
 
         optimizer = tf.train.MomentumOptimizer(learning_rate=lr,
                                                momentum=cfg.MOMENTUM)
-
-        train_op = slim.learning.create_train_op(total_loss, optimizer, global_step)
+        train_op = optimizer.minimize(rpn_net_loss, global_step)
+        # train_op = slim.learning.create_train_op(rpn_net_loss, optimizer, global_step)
         ###########
         # summary #
         ###########
@@ -175,16 +173,16 @@ def train():
         tf.summary.scalar('losses/rpn/location_loss', rpn_location_loss)
         tf.summary.scalar('losses/rpn/cls_loss', rpn_classification_loss)
         tf.summary.scalar('losses/rpn/total_loss', rpn_net_loss)
-
-        # fast rcnn prediction boxes
-        tf.summary.image('images/fast_rcnn/prediction_boxes', fast_rcnn_prediction_in_image)
-
-        # fast loss part
-        tf.summary.scalar('losses/fast_rcnn/location_loss', fast_rcnn_boxes_loss)
-        tf.summary.scalar('losses/fast_rcnn/cls_loss', fast_rcnn_cls_loss)
-        tf.summary.scalar('losses/fast_rcnn/total_loss', fast_rcnn_total_loss)
-        tf.summary.scalar('losses/total_loss', total_loss)
-        tf.summary.scalar('learing_rate', lr)
+        #
+        # # fast rcnn prediction boxes
+        # tf.summary.image('images/fast_rcnn/prediction_boxes', fast_rcnn_prediction_in_image)
+        #
+        # # fast loss part
+        # tf.summary.scalar('losses/fast_rcnn/location_loss', fast_rcnn_boxes_loss)
+        # tf.summary.scalar('losses/fast_rcnn/cls_loss', fast_rcnn_cls_loss)
+        # tf.summary.scalar('losses/fast_rcnn/total_loss', fast_rcnn_total_loss)
+        # tf.summary.scalar('losses/total_loss', total_loss)
+        # tf.summary.scalar('learing_rate', lr)
 
         if debug:
             # bcckbone network
@@ -198,8 +196,8 @@ def train():
             for i, image_with_anchor in enumerate(image_with_anchor_list):
                 tf.summary.image('anchors/image_with_anchors_'+str(i), image_with_anchor[0])
             # fast rcnn prediction
-            tf.summary.tensor_summary('image_shape', tf.shape(img))
-            tf.summary.tensor_summary('fast_rcnn_prediction_boxes', fast_rcnn_decode_boxes)
+            # tf.summary.tensor_summary('image_shape', tf.shape(img))
+            # tf.summary.tensor_summary('fast_rcnn_prediction_boxes', fast_rcnn_decode_boxes)
 
         summary_op = tf.summary.merge_all()
         summary_path = cfg.SUMMARY_PATH
@@ -237,9 +235,6 @@ def train():
                         _rpn_location_loss,\
                         _rpn_classification_loss,\
                         _rpn_net_loss,\
-                        _fast_rcnn_boxes_loss,\
-                        _fast_rcnn_cls_loss,\
-                        _fast_rcnn_total_loss,\
                         _total_loss,\
                         _train_op,\
                         summary_str\
@@ -248,9 +243,6 @@ def train():
                                     rpn_location_loss,
                                     rpn_classification_loss,
                                     rpn_net_loss,
-                                    fast_rcnn_boxes_loss,
-                                    fast_rcnn_cls_loss,
-                                    fast_rcnn_total_loss,
                                     total_loss,
                                     train_op,
                                     summary_op])
@@ -261,8 +253,7 @@ def train():
                         cost_time = end_time - start_time
                         print("""-----time:%s---step:%d---image name:%s---cost_time:%.4fs-----\n
                         total_loss:%.4f\n
-                        rpn_boxes_loss:%.4f         rpn_class_loss:%.4f         rpn_total_loss:%.4f\n
-                        fast_rcnn_boxes_loss:%.4f   fast_rcnn_class_loss:%.4f   fast_rcnn_total_loss:%4f"""
+                        rpn_boxes_loss:%.4f         rpn_class_loss:%.4f         rpn_total_loss:%.4f\n"""
                               % (training_time,
                                  _global_step,
                                  str(_img_name),
@@ -270,13 +261,10 @@ def train():
                                  _total_loss,
                                  _rpn_location_loss,
                                  _rpn_classification_loss,
-                                 _rpn_net_loss,
-                                 _fast_rcnn_boxes_loss,
-                                 _fast_rcnn_cls_loss,
-                                 _fast_rcnn_total_loss)
+                                 _rpn_net_loss)
                               )
                     # add summary
-                    if step % 10 == 0:
+                    if 1:  # step % 100 == 0:
                         # summary_str = sess.run(summary_op)
                         summary_writer.add_summary(summary_str, step)
                         summary_writer.flush()

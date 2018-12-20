@@ -109,7 +109,7 @@ FAST_RCNN_POSITIVE_RATIO = 0.25
 # -------training parameter----------
 
 # base_learning_rate
-BASE_LEARNING_RATE = 0.02
+BASE_LEARNING_RATE = 0.001
 # momentum
 MOMENTUM = 0.9
 # loss_weight [rpn_cls_loss_weight, rpn_location_loss_weight, fast_rcnn_cls_loss_weight, fast_rcnn_location_weight]
